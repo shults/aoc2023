@@ -2,6 +2,7 @@ package day01
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -44,7 +45,7 @@ func GetTwoDigitsNumber(line string) int {
 	return parseFirstDigit(line)*10 + parseLastDigit(line)
 }
 
-func Main(args []string, in io.Reader) {
+func Main(_ *flag.FlagSet, args []string, in io.Reader) {
 	r := bufio.NewReader(in)
 
 	var res = 0

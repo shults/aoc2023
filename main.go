@@ -3,13 +3,14 @@ package main
 import (
 	"aoc2023/day01"
 	"aoc2023/day02"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 )
 
-var programs = map[int]func(args []string, reader io.Reader){
+var programs = map[int]func(set *flag.FlagSet, args []string, reader io.Reader){
 	1: day01.Main,
 	2: day02.Main,
 }
@@ -33,7 +34,8 @@ func main() {
 		)
 	}
 
-	prog(os.Args[2:], os.Stdin)
+	flagSet := flag.NewFlagSet(fmt.Sprintf("%s %d [opts]", os.Args[0], day), flag.ExitOnError)
+	prog(flagSet, os.Args[2:], os.Stdin)
 }
 
 func printUsageAndExit(errMsg string) {

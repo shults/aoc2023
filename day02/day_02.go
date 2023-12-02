@@ -17,12 +17,11 @@ const (
 	colorGreen = "green"
 )
 
-func Main(args []string, in io.Reader) {
+func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	r := bufio.NewReader(in)
 	var red, green, blue int
 	var help bool
 
-	flagSet := flag.NewFlagSet("day2", flag.ExitOnError)
 	flagSet.IntVar(&red, "r", 0, "number of red")
 	flagSet.IntVar(&green, "g", 0, "number of green")
 	flagSet.IntVar(&blue, "b", 0, "number of blue")
@@ -158,9 +157,8 @@ func parseGameSets(gameSetStr string) ([]GameSet, error) {
 }
 
 type Game struct {
-	id       int
-	gameSets []GameSet
-	power    GameSet
+	id    int
+	power GameSet
 }
 
 func (g *Game) AppendGameSets(sets ...GameSet) {
@@ -170,17 +168,13 @@ func (g *Game) AppendGameSets(sets ...GameSet) {
 }
 
 func (g *Game) appendOne(set GameSet) {
-	g.gameSets = append(g.gameSets, set)
-
 	g.power.red = max(g.power.red, set.red)
 	g.power.green = max(g.power.green, set.green)
 	g.power.blue = max(g.power.blue, set.blue)
 }
 
 func (g *Game) Accepts(bag *Bag) bool {
-	return tools.MustEvery(g.gameSets, func(set *GameSet) bool {
-		return set.Accepts(bag)
-	})
+	return g.power.accepts(bag)
 }
 
 func (g *Game) Power() int {
@@ -197,7 +191,7 @@ type GameSet struct {
 	blue  int
 }
 
-func (gs *GameSet) Accepts(bag *Bag) bool {
+func (gs *GameSet) accepts(bag *Bag) bool {
 	return gs.red <= bag.red && gs.green <= bag.green && gs.blue <= bag.blue
 }
 
