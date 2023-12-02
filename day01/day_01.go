@@ -44,8 +44,8 @@ func GetTwoDigitsNumber(line string) int {
 	return parseFirstDigit(line)*10 + parseLastDigit(line)
 }
 
-func Main() {
-	r := bufio.NewReader(os.Stdin)
+func Main(args []string, in io.Reader) {
+	r := bufio.NewReader(in)
 
 	var res = 0
 
@@ -124,9 +124,12 @@ func parseDigit(
 		}
 	}
 
-	if firstWordIndex == -1 {
+	if firstWordIndex != -1 {
+		return firstWordValue
+	} else if isAsciiDigit(ch) {
 		return asciiDigitToInt(ch)
 	} else {
-		return firstWordValue
+		//panic("unexpected input: no one digit literal or digit keyword was found")
+		return 0
 	}
 }

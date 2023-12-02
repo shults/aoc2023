@@ -6,11 +6,11 @@ import (
 )
 
 func TestEvery(t *testing.T) {
-	assert.Equal(t, true, Every([]int{1, 1, 1, 1}, func(i int) bool {
-		return i == 1
-	}))
+	isOne := func(i *int) bool {
+		return *i == 1
+	}
 
-	assert.Equal(t, true, Every([]int{}, func(i int) bool {
-		return i == 1
-	}))
+	assert.Equal(t, true, MustEvery([]int{1, 1, 1, 1}, isOne))
+
+	assert.Equal(t, true, MustEvery([]int{}, isOne))
 }
