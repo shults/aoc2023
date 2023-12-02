@@ -40,7 +40,7 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 		os.Exit(0)
 	}
 
-	bag, err := NewBagFromArgs(red, green, blue)
+	bag, err := newBagFromArgs(red, green, blue)
 
 	if err != nil {
 		flagSet.Usage()
@@ -115,7 +115,7 @@ func ParseGame(gameLine string) (*Game, error) {
 
 func parseGameSets(gameSetStr string) ([]GameSet, error) {
 	return tools.Map(strings.Split(gameSetStr, ";"), func(gameSetNotTrimmed *string) (GameSet, error) {
-		gameSet := NewGameSet(0, 0, 0)
+		gameSet := newGameSet(0, 0, 0)
 
 		err := tools.Each(strings.Split(strings.TrimSpace(*gameSetNotTrimmed), ","), func(colorPairStr *string) error {
 			pair := strings.Split(strings.TrimSpace(*colorPairStr), " ")
@@ -167,12 +167,6 @@ func (g *Game) AppendGameSets(sets ...GameSet) {
 	}
 }
 
-func (g *Game) appendOne(set GameSet) {
-	g.power.red = max(g.power.red, set.red)
-	g.power.green = max(g.power.green, set.green)
-	g.power.blue = max(g.power.blue, set.blue)
-}
-
 func (g *Game) Accepts(bag *Bag) bool {
 	return g.power.accepts(bag)
 }
@@ -181,8 +175,14 @@ func (g *Game) Power() int {
 	return g.power.red * g.power.green * g.power.blue
 }
 
-func NewGameSet(red, green, blue int) GameSet {
-	return NewBag(red, green, blue)
+func (g *Game) appendOne(set GameSet) {
+	g.power.red = max(g.power.red, set.red)
+	g.power.green = max(g.power.green, set.green)
+	g.power.blue = max(g.power.blue, set.blue)
+}
+
+func newGameSet(red, green, blue int) GameSet {
+	return newBag(red, green, blue)
 }
 
 type GameSet struct {
@@ -195,7 +195,7 @@ func (gs *GameSet) accepts(bag *Bag) bool {
 	return gs.red <= bag.red && gs.green <= bag.green && gs.blue <= bag.blue
 }
 
-func NewBag(red, green, blue int) Bag {
+func newBag(red, green, blue int) Bag {
 	return Bag{
 		red:   red,
 		green: green,
@@ -203,8 +203,8 @@ func NewBag(red, green, blue int) Bag {
 	}
 }
 
-func NewBagFromArgs(red, green, blue int) (Bag, error) {
-	bag := NewBag(red, green, blue)
+func newBagFromArgs(red, green, blue int) (Bag, error) {
+	bag := newBag(red, green, blue)
 
 	if bag.red < 0 || bag.green < 0 || bag.blue < 0 {
 		return bag, fmt.Errorf("Unable to parse bag from cli. Bag cannot contain negative number of items %+v\n", bag)
