@@ -1,4 +1,4 @@
-package t01
+package day01
 
 import (
 	"strings"
@@ -53,10 +53,18 @@ func asciiDigitToInt(ch byte) int {
 }
 
 func GetTwoDigitsNumber(line string) int {
-	return parseFirstDigit(line, wordsToDigit)*10 + parseFirstDigit(reverse(line), invertedMap)
+	return parseFirstDigit(line)*10 + parseLastDigit(line)
 }
 
-func parseFirstDigit(
+func parseFirstDigit(line string) int {
+	return parseDigit(line, wordsToDigit)
+}
+
+func parseLastDigit(line string) int {
+	return parseDigit(reverse(line), invertedMap)
+}
+
+func parseDigit(
 	line string,
 	wm wordsMap,
 ) int {

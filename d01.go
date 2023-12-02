@@ -1,7 +1,7 @@
 package main
 
 import (
-	"aoc2023/t01"
+	"aoc2023/day01"
 	"bufio"
 	"fmt"
 	"io"
@@ -25,7 +25,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		res += t01.GetTwoDigitsNumber(string(line))
+		res += day01.GetTwoDigitsNumber(string(line))
 	}
 
 	fmt.Printf("%d\n", res)
