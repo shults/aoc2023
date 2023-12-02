@@ -1,6 +1,10 @@
 package day01
 
 import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -36,6 +40,33 @@ func makeInvertedMap(input wordsMap) wordsMap {
 	return res
 }
 
+func GetTwoDigitsNumber(line string) int {
+	return parseFirstDigit(line)*10 + parseLastDigit(line)
+}
+
+func Main() {
+	r := bufio.NewReader(os.Stdin)
+
+	var res = 0
+
+	for {
+		line, _, err := r.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			fmt.Printf("err=%s\n", err)
+			os.Exit(1)
+		}
+
+		res += GetTwoDigitsNumber(string(line))
+	}
+
+	fmt.Printf("%d\n", res)
+}
+
 func reverse(s string) string {
 	runes := []rune(s)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
@@ -50,10 +81,6 @@ func isAsciiDigit(ch byte) bool {
 
 func asciiDigitToInt(ch byte) int {
 	return int(ch - '0')
-}
-
-func GetTwoDigitsNumber(line string) int {
-	return parseFirstDigit(line)*10 + parseLastDigit(line)
 }
 
 func parseFirstDigit(line string) int {
