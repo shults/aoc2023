@@ -5,9 +5,29 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 )
 
-func Main(_ *flag.FlagSet, _ []string, in io.Reader) {
+func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
+	inputFile := flagSet.String("f", "", "input file")
+	err := flagSet.Parse(args)
+
+	if err != nil {
+		flagSet.Usage()
+		fmt.Printf("Error ocurred: %s\n", err)
+		os.Exit(1)
+	}
+
+	if len(*inputFile) > 0 {
+		in, err = os.Open(*inputFile)
+
+		if err != nil {
+			flagSet.Usage()
+			fmt.Printf("Error ocurred: %s\n", err)
+			os.Exit(1)
+		}
+	}
+
 	multiplyResult, gearRatio := run(in)
 	fmt.Printf("part1 = %d\npart2 = %d\n\n", multiplyResult, gearRatio)
 }
@@ -18,7 +38,7 @@ func run(reader io.Reader) (sum int, gearRatioSum int) {
 	sum = 0
 	gearRatioSum = 0
 
-	var ss *symbolSet
+	var ss *symbolBitSet
 	var line []byte
 	var nums []numEntity
 
@@ -42,7 +62,7 @@ func run(reader io.Reader) (sum int, gearRatioSum int) {
 		}
 
 		if ss == nil {
-			ss = newSymbolSet(len(line))
+			ss = newSymbolBitSet(len(line))
 		}
 
 		nm := newLineNumberMachine()
@@ -109,41 +129,51 @@ numIteration:
 	return
 }
 
-func newSymbolSet(width int) *symbolSet {
-	return &symbolSet{
-		data:  make([][]uint64, 0),
-		width: width,
+func max(a, b int) int {
+	if a > b {
+		return a
+	} else {
+		return b
 	}
 }
 
-type symbolSet struct {
-	data  [][]uint64
-	width int
+func newSymbolBitSet(width int) *symbolBitSet {
+	return &symbolBitSet{
+		data:      make([]uint64, 0),
+		width:     width,
+		maxOffset: 0,
+	}
 }
 
-func (ss *symbolSet) markAsSymbol(row, coll int) {
-	if row < 0 || coll < 0 {
+type symbolBitSet struct {
+	data      []uint64
+	width     int
+	maxOffset int
+}
+
+func (ss *symbolBitSet) markAsSymbol(row, coll int) {
+	if row < 0 || coll < 0 || coll > ss.width {
 		return
 	}
 
-	for i := len(ss.data); i <= row; i++ {
-		ss.data = append(ss.data, make([]uint64, (ss.width/64)+1))
+	offset := row*ss.width + coll
+
+	for i, max := len(ss.data), offset/64; i <= max; i++ {
+		ss.data = append(ss.data, uint64(0))
 	}
 
-	rowData := ss.data[row]
-
-	rowData[coll/64] = rowData[coll/64] | (1 << (coll % 64))
+	ss.maxOffset = max(ss.maxOffset, offset)
+	ss.data[offset/64] |= 1 << (offset % 64)
 }
 
-func (ss *symbolSet) isSymbol(row, coll int) bool {
+func (ss *symbolBitSet) isSymbol(row, coll int) bool {
+	offset := row*ss.width + coll
 	// out of boundary
-	if row < 0 || coll < 0 || coll > ss.width-1 || row > len(ss.data)-1 {
+	if row < 0 || coll < 0 || coll > ss.width-1 || offset > ss.maxOffset {
 		return false
 	}
 
-	rowData := ss.data[row]
-
-	return rowData[coll/64]&(1<<(coll%64)) > 0
+	return (ss.data[offset/64] & (1 << (offset % 64))) > 0
 }
 
 func isAsciiDigit(symbol byte) bool {

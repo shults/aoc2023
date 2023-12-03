@@ -18,7 +18,7 @@ func TestMyTestCase(t *testing.T) {
 	file, err := os.Open("03.in")
 
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	defer file.Close()
@@ -30,7 +30,7 @@ func TestMyTestCase(t *testing.T) {
 }
 
 func TestSymbolSet(t *testing.T) {
-	ss := newSymbolSet(64)
+	ss := newSymbolBitSet(64)
 	ss.markAsSymbol(0, 0)
 	ss.markAsSymbol(0, 63)
 
