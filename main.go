@@ -4,6 +4,7 @@ import (
 	"aoc2023/day01"
 	"aoc2023/day02"
 	"aoc2023/day03"
+	"aoc2023/day04"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ var programs = map[int]func(set *flag.FlagSet, args []string, reader io.Reader){
 	1: day01.Main,
 	2: day02.Main,
 	3: day03.Main,
+	4: day04.Main,
 }
 
 func main() {
@@ -42,6 +44,7 @@ func main() {
 
 func printUsageAndExit(errMsg string) {
 	fmt.Printf("Usage:\n\t%s <day> [opts]\n", os.Args[0])
+	fmt.Printf("\t%s help <day>\n", os.Args[0])
 
 	if len(errMsg) > 0 {
 		fmt.Printf("Error: %s\n", errMsg)
