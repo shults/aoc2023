@@ -132,11 +132,39 @@ func (p *InputParser) Print() {
 
 	for _, mapper := range p.mappers {
 		fmt.Printf("\t%s:\n", mapper.name)
-		for _, sub := range mapper.subSets {
-			fmt.Printf("\t%d %d %d\n", sub.destinationRangeStart, sub.sourceRangeStart, sub.rangeLength)
+		for _, sub := range mapper.subMappers {
+			fmt.Printf("\t%d %d %d\n", sub.dest.start, sub.src.start, sub.src.length())
 		}
 		fmt.Printf("\n")
 	}
+}
+
+func (p *InputParser) ProcessPart1(verbose bool) int {
+	lowesLocation := math.MaxInt
+
+	for _, seed := range p.seeds {
+		lowesLocation = min(lowesLocation, p.processSeed(seed, verbose))
+	}
+
+	return lowesLocation
+}
+
+func (p *InputParser) ProcessPart2(verbose bool) int {
+	lowesLocation := math.MaxInt
+	assert(len(p.seeds)%2 == 0, "expected to be even")
+
+	var ranges []Range
+
+	for i := 0; i < len(p.seeds); i += 2 {
+		ranges = append(ranges, Range{
+			start: p.seeds[i],
+			end:   p.seeds[i] + p.seeds[i+1] - 1,
+		})
+	}
+
+	p.processSeedPack(ranges, verbose)
+
+	return lowesLocation
 }
 
 func (p *InputParser) processSeed(seed int, verbose bool) int {
@@ -161,35 +189,12 @@ func (p *InputParser) processSeed(seed int, verbose bool) int {
 	return dest
 }
 
-func (p *InputParser) ProcessPart1(verbose bool) int {
-	lowesLocation := math.MaxInt
-
-	for _, seed := range p.seeds {
-		lowesLocation = min(lowesLocation, p.processSeed(seed, verbose))
+func (p *InputParser) processSeedPack(ranges []Range, verbose bool) []Range {
+	for _, mapper := range p.mappers {
+		ranges = mapper.MapRanges(ranges, verbose)
 	}
 
-	return lowesLocation
-}
-
-func (p *InputParser) ProcessPart2(verbose bool) int {
-	lowesLocation := math.MaxInt
-	assert(len(p.seeds)%2 == 0, "expected to be even")
-
-	for i := 0; i < len(p.seeds); i += 2 {
-		for seed, max := p.seeds[i], p.seeds[i]+p.seeds[i+1]-1; seed < max; seed++ {
-			lowesLocation = min(lowesLocation, p.processSeed(seed, verbose))
-		}
-	}
-
-	return lowesLocation
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	} else {
-		return b
-	}
+	return ranges
 }
 
 func NewSeedMapper(name string) *DestMapper {
@@ -199,8 +204,8 @@ func NewSeedMapper(name string) *DestMapper {
 }
 
 type DestMapper struct {
-	name    string
-	subSets []DestSet
+	name       string
+	subMappers []SubMapper
 }
 
 func (m *DestMapper) ParseLine(line []byte) {
@@ -214,30 +219,92 @@ func (m *DestMapper) ParseLine(line []byte) {
 		nums = append(nums, num)
 	}
 
-	m.subSets = append(m.subSets, DestSet{
-		destinationRangeStart: nums[0],
-		sourceRangeStart:      nums[1],
-		rangeLength:           nums[2],
+	m.subMappers = append(m.subMappers, SubMapper{
+		src: Range{
+			start: nums[1],
+			end:   nums[1] + nums[2],
+		},
+		dest: Range{
+			start: nums[0],
+			end:   nums[0] + nums[2],
+		},
 	})
 }
 
-func (m *DestMapper) Map(src int) (dest int) {
-	dest = src
-
-	for _, subSet := range m.subSets {
-		if dest >= subSet.sourceRangeStart && dest <= subSet.sourceRangeStart+subSet.rangeLength-1 {
-			dest = subSet.destinationRangeStart + dest - subSet.sourceRangeStart
-			return
+func (m *DestMapper) Map(src int) int {
+	for _, subMapper := range m.subMappers {
+		if subMapper.accepts(src) {
+			return subMapper.convert(src)
 		}
 	}
 
-	return
+	return src
 }
 
-type DestSet struct {
-	destinationRangeStart int
-	sourceRangeStart      int
-	rangeLength           int
+func (m *DestMapper) MapRanges(ranges []Range, verbose bool) []Range {
+	var res []Range
+
+	for _, sr := range ranges {
+		for _, ss := range m.subMappers {
+			res = append(res, ss.splitRange(sr)...)
+		}
+	}
+
+	return res
+}
+
+type SubMapper struct {
+	src  Range
+	dest Range
+}
+
+func (s *SubMapper) convert(src int) int {
+	return s.dest.start + src - s.src.start
+}
+
+func (s *SubMapper) accepts(src int) bool {
+	return s.src.contains(src)
+}
+
+func (s *SubMapper) splitRange(sr Range) []Range {
+
+	return nil
+
+	// todo: add case when data set is subset of range and split range into 3 parts
+
+	//if sr.start >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
+	//	// todo: includes and split into three parts
+	//	return []Range{
+	//		{
+	//			start: s.destinationRangeStart,
+	//		},
+	//	}
+	//} else if sr.end >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
+	//	// todo: make left overlap + map
+	//	return nil
+	//} else if sr.start >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
+	//	// right overlap
+	//	return nil
+	//} else {
+	//	// no overlap
+	//	// dont split range
+	//	return []Range{
+	//		sr,
+	//	}
+	//}
+}
+
+type Range struct {
+	start int
+	end   int
+}
+
+func (r *Range) contains(src int) bool {
+	return src >= r.start && src <= r.end
+}
+
+func (r *Range) length() int {
+	return r.end - r.end
 }
 
 func isAsciiNumber(symbol byte) bool {
@@ -253,5 +320,13 @@ func assert(assertion bool, msg string) {
 func assertNoError(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
 	}
 }
