@@ -9,12 +9,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // part1: 251346198
 // part2: 72263011
 
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
+	start := time.Now()
 	verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")
 	err := flagSet.Parse(args)
@@ -42,6 +44,7 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 
 	fmt.Printf("part1=%d\n", part1)
 	fmt.Printf("part2=%d\n", part2)
+	fmt.Printf("time microseconds=%d\n", time.Since(start).Microseconds())
 }
 
 func run(in io.Reader, verbose bool) (part1, part2 int) {
