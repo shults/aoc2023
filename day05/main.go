@@ -151,7 +151,7 @@ func (p *InputParser) ProcessPart1(verbose bool) int {
 
 func (p *InputParser) ProcessPart2(verbose bool) int {
 	lowesLocation := math.MaxInt
-	assert(len(p.seeds)%2 == 0, "expected to be even")
+	makeAssert(len(p.seeds)%2 == 0, "expected to be even")
 
 	var ranges []Range
 
@@ -162,7 +162,13 @@ func (p *InputParser) ProcessPart2(verbose bool) int {
 		})
 	}
 
-	p.processSeedPack(ranges, verbose)
+	resRanges := p.processSeedPack(ranges, verbose)
+
+	for _, r := range resRanges {
+		if r.start > 0 {
+			lowesLocation = min(lowesLocation, r.start)
+		}
+	}
 
 	return lowesLocation
 }
@@ -210,7 +216,7 @@ type DestMapper struct {
 
 func (m *DestMapper) ParseLine(line []byte) {
 	numStr := strings.Split(string(line), " ")
-	assert(len(numStr) == 3, "expected 3")
+	makeAssert(len(numStr) == 3, "expected 3")
 	var nums []int
 
 	for _, val := range numStr {
@@ -242,15 +248,48 @@ func (m *DestMapper) Map(src int) int {
 }
 
 func (m *DestMapper) MapRanges(ranges []Range, verbose bool) []Range {
-	var res []Range
+	var splitRanges []Range
 
-	for _, sr := range ranges {
-		for _, ss := range m.subMappers {
-			res = append(res, ss.splitRange(sr)...)
-		}
+	if verbose {
+		fmt.Printf("start %+v\n", m.name)
 	}
 
-	return res
+loopRanges:
+	for _, sr := range ranges {
+		for _, ss := range m.subMappers {
+			if !ss.src.intersects(sr) {
+				continue
+			}
+
+			splitRanges = append(splitRanges, ss.splitRange(sr)...)
+			continue loopRanges
+		}
+
+		splitRanges = append(splitRanges, sr)
+	}
+
+	resRanges := make([]Range, 0, cap(splitRanges))
+
+	for _, sr := range splitRanges {
+		resRanges = append(resRanges, m.MapRange(sr))
+	}
+
+	if verbose {
+		fmt.Printf("splitRanges=%+v\n", splitRanges)
+		fmt.Printf("resRanges=%+v\n", resRanges)
+		fmt.Printf("end %s %+v\n", m.name, len(resRanges))
+	}
+
+	return resRanges
+}
+
+func (m *DestMapper) MapRange(_range Range) Range {
+	for _, ss := range m.subMappers {
+		if ss.acceptsRange(_range) {
+			return ss.mapRange(_range)
+		}
+	}
+	return _range
 }
 
 type SubMapper struct {
@@ -263,35 +302,31 @@ func (s *SubMapper) convert(src int) int {
 }
 
 func (s *SubMapper) accepts(src int) bool {
-	return s.src.contains(src)
+	return s.src.containsValue(src)
+}
+
+func (s *SubMapper) acceptsRange(in Range) bool {
+	return s.src.contains(in)
+}
+
+func (s *SubMapper) mapRange(in Range) Range {
+	start := s.dest.start + in.start - s.src.start
+
+	return Range{
+		start: start,
+		end:   start + in.length(),
+	}
 }
 
 func (s *SubMapper) splitRange(sr Range) []Range {
+	return s.src.split(sr)
+}
 
-	return nil
-
-	// todo: add case when data set is subset of range and split range into 3 parts
-
-	//if sr.start >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
-	//	// todo: includes and split into three parts
-	//	return []Range{
-	//		{
-	//			start: s.destinationRangeStart,
-	//		},
-	//	}
-	//} else if sr.end >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
-	//	// todo: make left overlap + map
-	//	return nil
-	//} else if sr.start >= s.sourceRangeStart && sr.end <= s.sourceEnd() {
-	//	// right overlap
-	//	return nil
-	//} else {
-	//	// no overlap
-	//	// dont split range
-	//	return []Range{
-	//		sr,
-	//	}
-	//}
+func NewRange(start, end int) Range {
+	return Range{
+		start: start,
+		end:   end,
+	}
 }
 
 type Range struct {
@@ -299,19 +334,67 @@ type Range struct {
 	end   int
 }
 
-func (r *Range) contains(src int) bool {
+func (r *Range) containsValue(src int) bool {
 	return src >= r.start && src <= r.end
 }
 
 func (r *Range) length() int {
-	return r.end - r.end
+	return r.end - r.start
+}
+
+func (r *Range) intersects(other Range) bool {
+	return r.containsEndOf(other) || other.containsEndOf(*r)
+}
+
+func (r *Range) equals(other Range) bool {
+	return r.start == other.start && r.end == other.end
+}
+
+func (r *Range) contains(other Range) bool {
+	return r.start <= other.start && r.end >= other.end
+}
+
+func (r *Range) containsStrict(other Range) bool {
+	return r.start < other.start && r.end > other.end
+}
+
+func (r *Range) containsEndOf(other Range) bool {
+	return other.end >= r.start && other.end <= r.end
+}
+
+func (r *Range) containsStartOf(other Range) bool {
+	return other.containsEndOf(*r)
+}
+
+func (r *Range) split(src Range) []Range {
+	if r.contains(src) {
+		return []Range{src}
+	} else if src.containsStrict(*r) {
+		return []Range{
+			{start: src.start, end: r.end - 1},
+			*r,
+			{start: r.end + 1, end: src.end},
+		}
+	} else if r.containsEndOf(src) {
+		return []Range{
+			{start: src.start, end: src.end - 1},
+			{start: r.start, end: src.end},
+		}
+	} else if r.containsStartOf(src) {
+		return []Range{
+			{start: src.start, end: r.end},
+			{start: r.end + 1, end: src.end},
+		}
+	}
+
+	return []Range{src}
 }
 
 func isAsciiNumber(symbol byte) bool {
 	return symbol >= '0' && symbol <= '9'
 }
 
-func assert(assertion bool, msg string) {
+func makeAssert(assertion bool, msg string) {
 	if !assertion {
 		panic(msg)
 	}
