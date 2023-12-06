@@ -142,6 +142,7 @@ func (p *sRace) solutionsAnalytics() int {
 	d := b*b - 4*c
 
 	if d <= 0 {
+		// I am not sure about zero case
 		return 0
 	}
 
