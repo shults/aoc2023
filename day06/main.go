@@ -12,9 +12,12 @@ import (
 )
 
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
+	parser := NewInputParser()
+
 	start := time.Now()
 	verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")
+	flagSet.BoolVar(&parser.force, "b", false, "use brut force method")
 	err := flagSet.Parse(args)
 
 	if err != nil {
@@ -33,21 +36,22 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 		}
 	}
 
-	part1, part2 := run(
+	part1, part2, calcTimeStart := run(
 		in,
 		*verbose,
+		parser,
 	)
 
 	fmt.Printf("part1=%d\n", part1)
 	fmt.Printf("part2=%d\n", part2)
-	fmt.Printf("time microseconds=%d\n", time.Since(start).Microseconds())
+	fmt.Printf("time microseconds all=%d\n", time.Since(start).Microseconds())
+	fmt.Printf("time microseconds calc=%d\n", time.Since(calcTimeStart).Microseconds())
 }
 
-func run(in io.Reader, verbose bool) (part1, part2 int) {
+func run(in io.Reader, verbose bool, parser InputParser) (part1, part2 int, calcTimeStart time.Time) {
 	reader := bufio.NewReader(in)
 
 	var line []byte
-	parser := NewInputParser()
 
 	for {
 		data, isPrefix, err := reader.ReadLine()
@@ -74,6 +78,8 @@ func run(in io.Reader, verbose bool) (part1, part2 int) {
 	if verbose {
 		parser.Print()
 	}
+
+	calcTimeStart = time.Now()
 
 	part1 = parser.ProcessPart1(verbose)
 	part2 = parser.ProcessPart2(verbose)
@@ -133,15 +139,13 @@ func (p *sRace) solutionsAnalytics() int {
 	max := math.Max(x1, x2)
 	min := math.Max(math.Min(x1, x2), 0)
 
-	//fmt.Printf("max=%f min=%f\n", max, min)
-	//fmt.Printf("flor(max)=%d ceil(min)=%d\n", maxi, mini)
-	//fmt.Printf("solutions=%d\n", maxi-mini)
-
 	return int(floor(max)) - int(ceil(min)) + 1
 }
 
-func (p *sRace) solutions() int {
-	//return p.solutionsBrutForce()
+func (p *sRace) solutions(force bool) int {
+	if force {
+		return p.solutionsBrutForce()
+	}
 	return p.solutionsAnalytics()
 }
 
@@ -152,6 +156,8 @@ func (p *sRace) consume(race sRace) {
 
 type InputParser struct {
 	races []sRace
+	// use brut force method
+	force bool
 }
 
 func (p *InputParser) parseLine(line []byte) {
@@ -221,7 +227,7 @@ func (p *InputParser) ProcessPart1(verbose bool) int {
 	}
 
 	for _, race := range p.races {
-		part := race.solutions()
+		part := race.solutions(p.force)
 		res *= part
 
 		if verbose {
@@ -247,7 +253,7 @@ func (p *InputParser) ProcessPart2(verbose bool) int {
 		fmt.Printf("masterRace=%+v\n", masterRace)
 	}
 
-	return masterRace.solutions()
+	return masterRace.solutions(p.force)
 }
 
 func concatInt(dest, src int) int {
