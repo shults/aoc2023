@@ -106,6 +106,22 @@ func (p *sRace) solutionsBrutForce() int {
 	return counter
 }
 
+func floor(x float64) float64 {
+	if math.Floor(x) == x {
+		return math.Floor(x - 1)
+	} else {
+		return math.Floor(x)
+	}
+}
+
+func ceil(x float64) float64 {
+	if math.Ceil(x) == x {
+		return math.Ceil(x + 1)
+	} else {
+		return math.Ceil(x)
+	}
+}
+
 func (p *sRace) solutionsAnalytics() int {
 	b := float64(p.time)
 	c := float64(p.distance)
@@ -117,25 +133,11 @@ func (p *sRace) solutionsAnalytics() int {
 	max := math.Max(x1, x2)
 	min := math.Max(math.Min(x1, x2), 0)
 
-	dmin := 0
-	dmax := 0
-
-	if max == math.Floor(max) {
-		dmax = 1
-	}
-
-	if min == math.Floor(min) {
-		dmin = 1
-	}
-
-	maxi := int(math.Floor(max))
-	mini := int(math.Ceil(min))
-
 	//fmt.Printf("max=%f min=%f\n", max, min)
 	//fmt.Printf("flor(max)=%d ceil(min)=%d\n", maxi, mini)
 	//fmt.Printf("solutions=%d\n", maxi-mini)
 
-	return maxi - mini + 1 - dmin - dmax
+	return int(floor(max)) - int(ceil(min)) + 1
 }
 
 func (p *sRace) solutions() int {
