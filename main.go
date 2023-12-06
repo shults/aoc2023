@@ -6,6 +6,7 @@ import (
 	"aoc2023/day03"
 	"aoc2023/day04"
 	"aoc2023/day05"
+	"aoc2023/day06"
 	"flag"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ var programs = map[int]func(set *flag.FlagSet, args []string, reader io.Reader){
 	3: day03.Main,
 	4: day04.Main,
 	5: day05.Main,
+	6: day06.Main,
 }
 
 func main() {
