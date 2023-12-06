@@ -128,18 +128,22 @@ func ceil(x float64) float64 {
 	}
 }
 
+func minMax(a, b float64) (float64, float64) {
+	if a < b {
+		return a, b
+	} else {
+		return b, a
+	}
+}
+
 func (p *sRace) solutionsAnalytics() int {
 	b := float64(p.time)
 	c := float64(p.distance)
 	dSqrt := math.Sqrt(b*b - 4*c)
 
-	x1 := (b - dSqrt) / 2
-	x2 := (b + dSqrt) / 2
+	x1, x2 := minMax((b-dSqrt)/2, (b+dSqrt)/2)
 
-	max := math.Max(x1, x2)
-	min := math.Max(math.Min(x1, x2), 0)
-
-	return int(floor(max)) - int(ceil(min)) + 1
+	return int(floor(x2)) - int(math.Max(ceil(x1), 0)) + 1
 }
 
 func (p *sRace) solutions(force bool) int {
