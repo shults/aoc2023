@@ -139,7 +139,13 @@ func minMax(a, b float64) (float64, float64) {
 func (p *sRace) solutionsAnalytics() int {
 	b := float64(p.time)
 	c := float64(p.distance)
-	dSqrt := math.Sqrt(b*b - 4*c)
+	d := b*b - 4*c
+
+	if d <= 0 {
+		return 0
+	}
+
+	dSqrt := math.Sqrt(d)
 
 	x1, x2 := minMax((b-dSqrt)/2, (b+dSqrt)/2)
 
