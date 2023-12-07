@@ -43,6 +43,7 @@ const (
 	CardA CardKind = 12 - iota
 	CardK
 	CardQ
+	CardJ
 	CardT
 	Card9
 	Card8
@@ -52,7 +53,6 @@ const (
 	Card4
 	Card3
 	Card2
-	CardJ
 )
 
 var (
@@ -71,7 +71,17 @@ var (
 		'3': Card3,
 		'2': Card2,
 	}
+
+	invertedCardMap map[CardKind]byte
 )
+
+func init() {
+	invertedCardMap = make(map[CardKind]byte, len(cardMap))
+
+	for k, v := range cardMap {
+		invertedCardMap[v] = k
+	}
+}
 
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	start := time.Now()
@@ -108,9 +118,7 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 
 func run(in io.Reader, verbose bool) (part1, part2 int, calcTimeStart time.Time) {
 	reader := bufio.NewReader(in)
-	cf := newCardFactory()
-
-	var combinations []CardsCombination
+	cc := newCardCombinations()
 
 	for {
 		line, _, err := reader.ReadLine()
@@ -120,26 +128,55 @@ func run(in io.Reader, verbose bool) (part1, part2 int, calcTimeStart time.Time)
 		}
 
 		assertNoError(err)
-
-		combinations = append(combinations, cf.parseCombination(string(line)))
+		cc.addCard(string(line))
 	}
 
 	calcTimeStart = time.Now()
 
-	slices.SortFunc(combinations, func(a, b CardsCombination) int {
-		return a.Compare(&b)
-	})
-
-	part1 = 0
-	for i, cc := range combinations {
-		part1 += (i + 1) * cc.score
-	}
-
-	if verbose {
-		fmt.Printf("%+v\n", combinations)
-	}
+	part1 = cc.part1()
+	part2 = cc.part2()
 
 	return
+}
+
+func newCardCombinations() *cardCombinations {
+	return &cardCombinations{}
+}
+
+type cardCombinations struct {
+	cf           cardFactory
+	combinations []CardsCombination
+}
+
+func (cc *cardCombinations) addCard(line string) {
+	cc.combinations = append(cc.combinations, cc.cf.parseCombination(line))
+}
+
+func (cc *cardCombinations) part1() int {
+	part1 := 0
+
+	slices.SortFunc(cc.combinations, func(a, b CardsCombination) int {
+		return a.ComparePart1(&b)
+	})
+	for i, c := range cc.combinations {
+		part1 += (i + 1) * c.score
+	}
+
+	return part1
+}
+
+func (cc *cardCombinations) part2() int {
+	part2 := 0
+
+	slices.SortFunc(cc.combinations, func(a, b CardsCombination) int {
+		return a.ComparePart2(&b)
+	})
+	for i, c := range cc.combinations {
+		fmt.Printf("%s\n", c.Debug2(i+1))
+		part2 += (i + 1) * c.score
+	}
+
+	return part2
 }
 
 func newCardFactory() cardFactory {
@@ -150,14 +187,17 @@ type cardFactory struct {
 	combinations [13]uint8
 }
 
-func (c *cardFactory) getCombination(cards *FiveCards) CardCombinationScore {
+func (c *cardFactory) recalculateCombinations(cards *FiveCards) {
 	for i := 0; i < len(c.combinations); i++ {
 		c.combinations[i] = 0
 	}
-
 	for _, card := range cards {
 		c.combinations[card] += 1
 	}
+}
+
+func (c *cardFactory) getCombinationPart1(cards *FiveCards) CardCombinationScore {
+	c.recalculateCombinations(cards)
 
 	threeOfAkind := false
 	pairsNumber := 0
@@ -189,6 +229,88 @@ func (c *cardFactory) getCombination(cards *FiveCards) CardCombinationScore {
 	return HighCard
 }
 
+func maxCombination(a, b CardCombinationScore) CardCombinationScore {
+	if a > b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func (c *cardFactory) getCombinationPart2(cards *FiveCards) CardCombinationScore {
+	c.recalculateCombinations(cards)
+
+	threeOfAkind := false
+	pairsNumber := 0
+	maxCombo := HighCard
+
+	for _, card := range cards {
+		if card == CardJ {
+			continue
+		}
+
+		if c.combinations[card] == 5 {
+			return FiveOfAKind
+		} else if c.combinations[card] == 4 {
+			maxCombo = maxCombination(maxCombo, FourOfAKind)
+		} else if c.combinations[card] == 3 {
+			maxCombo = maxCombination(maxCombo, ThreeOfAKind)
+			c.combinations[card] = 0
+			threeOfAkind = true
+			pairsNumber--
+		} else if c.combinations[card] == 2 {
+			maxCombo = maxCombination(maxCombo, OnePair)
+			c.combinations[card] = 0
+			pairsNumber++
+		}
+	}
+
+	if pairsNumber == 2 {
+		maxCombo = TwoPair
+	}
+
+	if threeOfAkind && pairsNumber == 1 {
+		maxCombo = FullHouse
+	}
+
+	jokers := c.combinations[CardJ]
+	if jokers > 0 {
+
+		if jokers == 4 || jokers == 5 {
+			// 5 | 4 -> 5 of kind | 0 hops
+			return FiveOfAKind
+		} else if jokers == 3 && pairsNumber > 0 {
+			// 3 -> five of kind if pair | 5 hops pair -> two pairs -> three of kine -> full house -> 4k -> 5k 3
+			return FiveOfAKind
+		} else if jokers == 3 {
+			// 3 and high card
+			return FourOfAKind
+		} else if jokers == 2 && maxCombo == ThreeOfAKind {
+			return FiveOfAKind
+		} else if jokers == 2 && maxCombo == OnePair {
+			return FourOfAKind
+		} else if jokers == 2 && maxCombo == HighCard {
+			return ThreeOfAKind
+		} else if jokers == 1 {
+			if maxCombo <= OnePair {
+				return maxCombo + 1
+			} else if maxCombo == TwoPair {
+				return FullHouse
+			} else if maxCombo == ThreeOfAKind {
+				return FourOfAKind
+			} else if maxCombo == FourOfAKind {
+				return FiveOfAKind
+			}
+
+			panic(fmt.Sprintf("non expected combo %+v", c.combinations))
+		} else {
+			panic(fmt.Sprintf("non expected combo 2 %+v", c.combinations))
+		}
+	}
+
+	return maxCombo
+}
+
 func (c *cardFactory) parseCombination(line string) CardsCombination {
 	var cards FiveCards
 
@@ -205,38 +327,109 @@ func (c *cardFactory) parseCombination(line string) CardsCombination {
 	}
 
 	return CardsCombination{
-		combination: c.getCombination(&cards),
-		cards:       cards,
-		score:       score,
+		combination1: c.getCombinationPart1(&cards),
+		combination2: c.getCombinationPart2(&cards),
+		cards:        cards,
+		score:        score,
 	}
 }
 
 type CardsCombination struct {
-	combination CardCombinationScore
-	cards       FiveCards
-	score       int
+	combination1 CardCombinationScore
+	combination2 CardCombinationScore
+	cards        FiveCards
+	score        int
 }
 
-func (c *CardsCombination) Compare(other *CardsCombination) int {
-	if c.combination > other.combination {
+var printCardBuf = make([]byte, 5)
+
+func PrintCards(fc *FiveCards) string {
+	for i, card := range fc {
+		printCardBuf[i] = invertedCardMap[card]
+	}
+
+	return string(printCardBuf)
+}
+
+func PrintCardCombinationScore(c CardCombinationScore) string {
+	switch c {
+
+	case HighCard:
+		return "HighCard"
+	case OnePair:
+		return "OnePair"
+	case TwoPair:
+		return "TwoPair"
+	case ThreeOfAKind:
+		return "ThreeOfAKind"
+	case FullHouse:
+		return "FullHouse"
+	case FourOfAKind:
+		return "FourOfAKind"
+	case FiveOfAKind:
+		return "FiveOfAKind"
+
+	default:
+		panic("non expected card")
+	}
+}
+
+func (c *CardsCombination) Debug2(rank int) string {
+	return fmt.Sprintf("%d %s %s", rank, PrintCardCombinationScore(c.combination2), PrintCards(&c.cards))
+}
+
+func (c *CardsCombination) ComparePart1(other *CardsCombination) int {
+	if c.combination1 > other.combination1 {
 		return 1
-	} else if c.combination < other.combination {
+	} else if c.combination1 < other.combination1 {
 		return -1
 	} else {
-		return FiveCardsCompare(&c.cards, &other.cards)
+		return FiveCardsCompareP1(&c.cards, &other.cards)
+	}
+}
+
+func (c *CardsCombination) ComparePart2(other *CardsCombination) int {
+	if c.combination2 > other.combination2 {
+		return 1
+	} else if c.combination2 < other.combination2 {
+		return -1
+	} else {
+		return FiveCardsCompareP2(&c.cards, &other.cards)
 	}
 }
 
 type FiveCards = [5]CardKind
 
-func FiveCardsCompare(a *FiveCards, b *FiveCards) int {
+func FiveCardsCompareP1(a *FiveCards, b *FiveCards) int {
 	for i := 0; i < len(a); i++ {
 		if a[i] > b[i] {
 			return 1
 		} else if a[i] < b[i] {
 			return -1
-		} else {
+		}
+	}
+
+	return 0
+}
+
+func FiveCardsCompareP2(a *FiveCards, b *FiveCards) int {
+	for i := 0; i < len(a); i++ {
+		if a[i] == b[i] {
 			continue
+		}
+
+		if a[i] == CardJ {
+			return -1
+		}
+
+		if b[i] == CardJ {
+			return 1
+		}
+
+		if a[i] > b[i] {
+			return 1
+		} else if a[i] < b[i] {
+			return -1
 		}
 	}
 

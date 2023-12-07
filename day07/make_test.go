@@ -7,29 +7,33 @@ import (
 
 func TestCardFactory(t *testing.T) {
 	tests := []struct {
-		in          string
-		combination CardCombinationScore
+		in           string
+		combination1 CardCombinationScore
+		combination2 CardCombinationScore
 	}{
-		{"32T3K 765", OnePair},
-		{"T55J5 684", ThreeOfAKind},
-		{"KK677 28", TwoPair},
-		{"KTJJT 220", TwoPair},
-		{"QQQJA 483", ThreeOfAKind},
+		{"32T3K 765", OnePair, OnePair},
+		{"T55J5 684", ThreeOfAKind, FourOfAKind},
+		{"KK677 28", TwoPair, TwoPair},
+		{"KTJJT 220", TwoPair, FourOfAKind},
+		{"QQQJA 483", ThreeOfAKind, FourOfAKind},
 
 		// my adds
-		{"2345A 483", HighCard},
-		{"AAAAA 483", FiveOfAKind},
-		{"AAAAT 483", FourOfAKind},
-		{"AAATT 483", FullHouse},
-		{"AAA23 483", ThreeOfAKind},
-		{"AA223 483", TwoPair},
-		{"AA234 483", OnePair},
+		{"JJJJA 483", FourOfAKind, FiveOfAKind},
+		{"JJJJJ 483", FiveOfAKind, FiveOfAKind},
+		{"2345A 483", HighCard, HighCard},
+		{"AAAAA 483", FiveOfAKind, FiveOfAKind},
+		{"AAAAT 483", FourOfAKind, FourOfAKind},
+		{"AAATT 483", FullHouse, FullHouse},
+		{"AAA23 483", ThreeOfAKind, ThreeOfAKind},
+		{"AA223 483", TwoPair, TwoPair},
+		{"AA234 483", OnePair, OnePair},
 	}
 
 	cf := newCardFactory()
 
 	for _, test := range tests {
 		card := cf.parseCombination(test.in)
-		assert.Equal(t, test.combination, card.combination)
+		assert.Equal(t, test.combination1, card.combination1, test.in)
+		assert.Equal(t, test.combination2, card.combination2, test.in)
 	}
 }
