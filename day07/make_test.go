@@ -27,6 +27,7 @@ func TestCardFactory(t *testing.T) {
 		{"AAA23 483", ThreeOfAKind, ThreeOfAKind},
 		{"AA223 483", TwoPair, TwoPair},
 		{"AA234 483", OnePair, OnePair},
+		{"J22KA 483", OnePair, ThreeOfAKind},
 	}
 
 	cf := newCardFactory()

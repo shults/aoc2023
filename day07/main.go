@@ -257,7 +257,6 @@ func (c *cardFactory) getCombinationPart2(cards *FiveCards) CardCombinationScore
 			maxCombo = maxCombination(maxCombo, ThreeOfAKind)
 			c.combinations[card] = 0
 			threeOfAkind = true
-			pairsNumber--
 		} else if c.combinations[card] == 2 {
 			maxCombo = maxCombination(maxCombo, OnePair)
 			c.combinations[card] = 0
@@ -292,8 +291,10 @@ func (c *cardFactory) getCombinationPart2(cards *FiveCards) CardCombinationScore
 		} else if jokers == 2 && maxCombo == HighCard {
 			return ThreeOfAKind
 		} else if jokers == 1 {
-			if maxCombo <= OnePair {
-				return maxCombo + 1
+			if maxCombo == HighCard {
+				return OnePair
+			} else if maxCombo == OnePair {
+				return ThreeOfAKind
 			} else if maxCombo == TwoPair {
 				return FullHouse
 			} else if maxCombo == ThreeOfAKind {
