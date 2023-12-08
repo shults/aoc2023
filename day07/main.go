@@ -96,13 +96,16 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	}
 
 	if len(*inputFile) > 0 {
-		in, err = os.Open(*inputFile)
+		file, err := os.Open(*inputFile)
 
 		if err != nil {
 			flagSet.Usage()
 			fmt.Printf("Error ocurred: %s\n", err)
 			os.Exit(1)
 		}
+
+		defer file.Close()
+		in = file
 	}
 
 	part1, part2, calcTimeStart := run(
