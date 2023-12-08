@@ -39,5 +39,28 @@ func TestMyPart1(t *testing.T) {
 
 	res := program.Part1(false)
 
-	assert.Equal(t, 2, res)
+	assert.Equal(t, 16343, res)
+}
+
+func TestExample2(t *testing.T) {
+	tests := []struct {
+		file     string
+		expected int
+	}{
+		{"test3.txt", 6},
+	}
+
+	for _, test := range tests {
+		file, err := os.Open(test.file)
+		panicOnError(err)
+
+		program := newProgram(file)
+		err = file.Close()
+		panicOnError(err)
+
+		res := program.Part2(true)
+
+		assert.Equal(t, test.expected, res)
+	}
+
 }

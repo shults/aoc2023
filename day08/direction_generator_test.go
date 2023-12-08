@@ -25,13 +25,13 @@ func TestNewInstructionGenerator(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, uint64(0), gen.pos)
+	assert.Equal(t, 0, gen.pos)
 	assert.Equal(t, byte(DirectionLeft), gen.Next())
-	assert.Equal(t, uint64(1), gen.pos)
+	assert.Equal(t, 1, gen.pos)
 	assert.Equal(t, byte(DirectionLeft), gen.Next())
 	assert.Equal(t, byte(DirectionRight), gen.Next())
 	assert.Equal(t, byte(DirectionRight), gen.Next())
-	assert.Equal(t, uint64(4), gen.pos)
+	assert.Equal(t, 4, gen.pos)
 	assert.Equal(t, byte(DirectionLeft), gen.Next())
-	assert.Equal(t, uint64(0), gen.pos)
+	assert.Equal(t, 0, gen.pos)
 }

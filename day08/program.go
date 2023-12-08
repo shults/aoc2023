@@ -4,15 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
+	"time"
 )
 
 func newProgram(in io.Reader) Program {
 	reader := bufio.NewReader(in)
 
 	var gen *DirectionGenerator
-	instructionMap := NewInstructionGenerator()
+
+	var lines []string
+	ctr := 0
 
 	for {
+		ctr++
 		line, isPrefix, err := reader.ReadLine()
 
 		panicOnFalse(!isPrefix, "prefix is not expected")
@@ -23,18 +28,20 @@ func newProgram(in io.Reader) Program {
 
 		panicOnError(err)
 
-		if len(line) == 0 {
-			continue
-		}
-
-		if gen == nil {
+		if ctr == 1 {
 			generator := NewDirectionGenerator(line)
 			gen = &generator
 			continue
 		}
 
-		instructionMap.Add(line)
+		if ctr == 2 {
+			continue
+		}
+
+		lines = append(lines, string(line))
 	}
+
+	instructionMap := NewInstructionGenerator(lines)
 
 	return Program{
 		directionGenerator:   *gen,
@@ -49,26 +56,34 @@ type Program struct {
 
 func (p *Program) Part1(verbose bool) int {
 	iters := 0
+
+	offset := 30
+	bitValue := int(0)
+	mask := 1 << offset
+
 	for {
 		iters++
-		res := p.instructionGenerator.Next(p.directionGenerator.Next())
 
-		if verbose && iters%1000_000 == 0 {
-			fmt.Printf("iter=%d res=%s\n", iters, res)
+		if verbose {
+			newBitValue := (iters & mask) >> offset
+
+			if newBitValue != bitValue {
+				fmt.Printf("iters=%d percent=%f time=%s\n", iters, float64(iters)/float64(math.MaxInt64), time.Now())
+			}
+
+			bitValue = newBitValue
 		}
 
-		//if verbose {
-		//	fmt.Printf("%s\n", res)
-		//}
+		res := p.instructionGenerator.Next(p.directionGenerator.Next())
 
-		//if iters == 100 {
-		//	panic("ofof")
-		//}
-
-		if res == finalInstruction {
+		if res == p.instructionGenerator.finalInstruction {
 			break
 		}
 	}
 
 	return iters
+}
+
+func (p *Program) Part2(verbose bool) int {
+	return p.instructionGenerator.Part2(p.directionGenerator, verbose)
 }

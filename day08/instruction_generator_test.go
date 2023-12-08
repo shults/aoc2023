@@ -6,7 +6,6 @@ import (
 )
 
 func TestInstructionGenerator(t *testing.T) {
-
 	lines := []string{
 		"AAA = (BBB, CCC)",
 		"BBB = (DDD, EEE)",
@@ -17,11 +16,7 @@ func TestInstructionGenerator(t *testing.T) {
 		"ZZZ = (ZZZ, ZZZ)",
 	}
 
-	gen := NewInstructionGenerator()
-
-	for _, line := range lines {
-		gen.Add([]byte(line))
-	}
+	gen := NewInstructionGenerator(lines)
 
 	assert.Equal(t, "BBB", gen.NextStr(DirectionLeft))
 	assert.Equal(t, "EEE", gen.NextStr(RightSymbol))

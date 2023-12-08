@@ -12,44 +12,54 @@ const (
 	RightSymbol      = 'R'
 )
 
+const bufSize = 1 << 12
+
 func NewDirectionGenerator(line []byte) DirectionGenerator {
-	data := make([]uint64, len(line)%64+1)
-
-	for i, instruction := range line {
-		key := i / 64
-		bitOffset := i % 64
-
-		if instruction == LeftSymbol {
-			continue
-		}
-
-		data[key] |= 1 << bitOffset
-	}
-
-	return DirectionGenerator{
+	dirGen := DirectionGenerator{
 		pos:  0,
-		size: uint64(len(line)),
-		data: data,
+		size: len(line),
 	}
+
+	if len(line) > bufSize {
+		panic("too small buffer")
+	}
+
+	for key, instruction := range line {
+		if instruction == LeftSymbol {
+			dirGen.data[key] = DirectionLeft
+		} else if instruction == RightSymbol {
+			dirGen.data[key] = DirectionRight
+		} else {
+			panic("wrong symbol")
+		}
+	}
+
+	return dirGen
 }
 
 type DirectionGenerator struct {
-	pos  uint64
-	size uint64
-	data []uint64
+	pos  int
+	size int
+	data [bufSize]Direction
 }
 
 func (g *DirectionGenerator) Next() Direction {
-	key := g.pos / 64
-	offset := g.pos % 64
-
-	val := byte((g.data[key] & (1 << offset)) >> offset)
-
+	ret := g.data[g.pos]
 	g.pos++
 
 	if g.pos == g.size {
 		g.pos = 0
 	}
 
-	return val
+	return ret
+}
+
+func (g *DirectionGenerator) Reset() {
+	g.pos = 0
+}
+
+func (g *DirectionGenerator) CloneAndReset() DirectionGenerator {
+	clone := *g
+	clone.Reset()
+	return clone
 }
