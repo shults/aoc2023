@@ -117,22 +117,45 @@ func (m *InstructionGenerator) NextBulk(dir Direction, positions []int) MappedIn
 	}
 }
 
-func (m *InstructionGenerator) GenNumberOfFinial(num int, pos uint16, dirGen DirectionGenerator) (result []int) {
-
-	iter := 0
+func gcd(a, b int) int {
+	if a == 0 {
+		return b
+	}
 
 	for {
-		if len(result) == num {
+		if b == 0 {
+			break
+		}
+
+		var r int
+		if a > b {
+			r = a % b
+		} else {
+			r = b % a
+		}
+		a = b
+		b = r
+	}
+
+	return a
+}
+
+func lcm(a, b int) int {
+	return (a * b) / gcd(a, b)
+}
+
+func (m *InstructionGenerator) GenFinialState(pos uint16, dirGen DirectionGenerator) (result int) {
+	result = 0
+
+	for {
+		node := m.data[pos]
+		pos = node.GetNext(dirGen.Next())
+
+		if node.isFinal {
 			return
 		}
 
-		iter++
-
-		node := m.data[pos]
-
-		if node.isFinal {
-			result = append(result, iter)
-		}
+		result++
 	}
 }
 
@@ -149,66 +172,22 @@ func (m *InstructionGenerator) Part2(dirGen DirectionGenerator, verbose bool) (i
 
 	iters = 0
 
-	offset := 28
-	bitValue := int(0)
-	mask := 1 << offset
+	results := make([]int, len(positions))
 
-	doLog := false
+	for i, pos := range positions {
+		results[i] = m.GenFinialState(pos, dirGen.CloneAndReset())
+	}
 
-	for _, pos := range positions {
-		node := m.data[pos]
+	if verbose {
+		fmt.Printf("%+v\n", results)
+	}
 
-		fmt.Printf("calculationg %s\n", node.val)
-		iterationList := m.GenNumberOfFinial(1, pos, dirGen.CloneAndReset())
-
-		fmt.Printf("%s %+v\n", node.val, iterationList)
+	iters = results[0]
+	for i := 1; i < len(results); i++ {
+		iters = lcm(iters, results[i])
 	}
 
 	return
-
-	for {
-		stopLoop := true
-		dir := dirGen.Next()
-
-		if verbose {
-			newBitValue := (iters & mask) >> offset
-
-			doLog = newBitValue != bitValue
-			bitValue = newBitValue
-		}
-
-		if doLog {
-			fmt.Printf("%d ", iters)
-		}
-
-		for i, pos := range positions {
-			node := m.data[pos]
-
-			if doLog {
-				fmt.Printf("%s ", node.val)
-			}
-
-			if !node.isFinal {
-				stopLoop = false
-			} else {
-				if verbose {
-					fmt.Printf("%d %d isFinal\n", iters, i)
-				}
-			}
-
-			positions[i] = node.GetNext(dir)
-		}
-
-		if doLog {
-			fmt.Printf("\n")
-		}
-
-		if stopLoop {
-			return
-		}
-
-		iters++
-	}
 }
 
 func (m *InstructionGenerator) NextStr(dir Direction) string {
@@ -233,14 +212,6 @@ type Instruction struct {
 	isFinal bool
 	isStart bool
 }
-
-//func (i Instruction) isFinal() bool {
-//	return i.val[2] == 'Z' // && i.val[1] != 'Z' && i.val[0] != 'Z'
-//}
-//
-//func (i Instruction) isStart() bool {
-//	return i.val[2] == 'A' // && i.val[1] != 'A' && i.val[0] != 'A'
-//}
 
 type InstructionPair struct {
 	left  Instruction
