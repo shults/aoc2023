@@ -117,6 +117,25 @@ func (m *InstructionGenerator) NextBulk(dir Direction, positions []int) MappedIn
 	}
 }
 
+func (m *InstructionGenerator) GenNumberOfFinial(num int, pos uint16, dirGen DirectionGenerator) (result []int) {
+
+	iter := 0
+
+	for {
+		if len(result) == num {
+			return
+		}
+
+		iter++
+
+		node := m.data[pos]
+
+		if node.isFinal {
+			result = append(result, iter)
+		}
+	}
+}
+
 func (m *InstructionGenerator) Part2(dirGen DirectionGenerator, verbose bool) (iters int) {
 	dirGen.Reset()
 	var positions []uint16
@@ -135,6 +154,17 @@ func (m *InstructionGenerator) Part2(dirGen DirectionGenerator, verbose bool) (i
 	mask := 1 << offset
 
 	doLog := false
+
+	for _, pos := range positions {
+		node := m.data[pos]
+
+		fmt.Printf("calculationg %s\n", node.val)
+		iterationList := m.GenNumberOfFinial(1, pos, dirGen.CloneAndReset())
+
+		fmt.Printf("%s %+v\n", node.val, iterationList)
+	}
+
+	return
 
 	for {
 		stopLoop := true
