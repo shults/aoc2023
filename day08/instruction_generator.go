@@ -52,24 +52,17 @@ func NewInstructionGenerator(
 		posToInputValue[mapItem.pos] = mapItem.val
 	}
 
-	finalInstruction := instructionToValue[NewInstruction('Z', 'Z', 'Z')]
-	firstInstruction := instructionToValue[NewInstruction('A', 'A', 'A')]
-
 	return InstructionGenerator{
-		pos:              firstInstruction.pos,
-		data:             data,
-		inMap:            instructionToValue,
-		finalInstruction: finalInstruction.pos,
-		posToInputValue:  posToInputValue,
+		data:            data,
+		inMap:           instructionToValue,
+		posToInputValue: posToInputValue,
 	}
 }
 
 type InstructionGenerator struct {
-	pos              uint16
-	data             []mapItemPos
-	posToInputValue  []Instruction
-	finalInstruction uint16
-	inMap            map[Instruction]struct {
+	data            []mapItemPos
+	posToInputValue []Instruction
+	inMap           map[Instruction]struct {
 		pos              uint16
 		val, left, right Instruction
 	}
@@ -93,63 +86,15 @@ func (p *mapItemPos) GetNext(dir Direction) uint16 {
 	}
 }
 
-func (m *InstructionGenerator) Next(dir Direction) MappedInstruction {
-	val := m.data[m.pos]
-
-	if dir == DirectionLeft {
-		m.pos = val.left
-		return val.left
-	} else {
-		m.pos = val.right
-		return val.right
-	}
-}
-
-func (m *InstructionGenerator) NextBulk(dir Direction, positions []int) MappedInstruction {
-	val := m.data[m.pos]
-
-	if dir == DirectionLeft {
-		m.pos = val.left
-		return val.left
-	} else {
-		m.pos = val.right
-		return val.right
-	}
-}
-
-func gcd(a, b int) int {
-	if a == 0 {
-		return b
-	}
-
-	for {
-		if b == 0 {
-			break
-		}
-
-		var r int
-		if a > b {
-			r = a % b
-		} else {
-			r = b % a
-		}
-		a = b
-		b = r
-	}
-
-	return a
-}
-
-func lcm(a, b int) int {
-	return (a * b) / gcd(a, b)
-}
-
-func (m *InstructionGenerator) GenFinialState(pos uint16, dirGen DirectionGenerator) (result int) {
+func (m *InstructionGenerator) GenFinialState(
+	startPosition uint16,
+	dirGen DirectionGenerator,
+) (result int) {
 	result = 0
 
 	for {
-		node := m.data[pos]
-		pos = node.GetNext(dirGen.Next())
+		node := m.data[startPosition]
+		startPosition = node.GetNext(dirGen.Next())
 
 		if node.isFinal {
 			return
@@ -190,14 +135,12 @@ func (m *InstructionGenerator) Part2(dirGen DirectionGenerator, verbose bool) (i
 	return
 }
 
-func (m *InstructionGenerator) NextStr(dir Direction) string {
-	// todo: make slice which has mapped pos to value
-	return fmt.Sprintf("%s", m.posToInputValue[m.Next(dir)].val)
+func (m *InstructionGenerator) Part1(generator DirectionGenerator) int {
+	firstInstruction := m.inMap[NewInstruction('A', 'A', 'A')]
+	return m.GenFinialState(firstInstruction.pos, generator)
 }
 
 type MappedInstruction = uint16
-
-// Instruction can be represented as one 16bit digit (5 bits per number)
 
 func NewInstruction(a, b, c byte) Instruction {
 	return Instruction{
@@ -220,4 +163,31 @@ type InstructionPair struct {
 
 func isCapitalLetterOrNumeric(symbol byte) bool {
 	return (symbol >= 'A' && symbol <= 'Z') || (symbol >= '0' && symbol <= '9')
+}
+
+func gcd(a, b int) int {
+	if a == 0 {
+		return b
+	}
+
+	for {
+		if b == 0 {
+			break
+		}
+
+		var r int
+		if a > b {
+			r = a % b
+		} else {
+			r = b % a
+		}
+		a = b
+		b = r
+	}
+
+	return a
+}
+
+func lcm(a, b int) int {
+	return (a * b) / gcd(a, b)
 }

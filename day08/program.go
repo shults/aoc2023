@@ -2,10 +2,7 @@ package day08
 
 import (
 	"bufio"
-	"fmt"
 	"io"
-	"math"
-	"time"
 )
 
 func newProgram(in io.Reader) Program {
@@ -54,34 +51,8 @@ type Program struct {
 	instructionGenerator InstructionGenerator
 }
 
-func (p *Program) Part1(verbose bool) int {
-	iters := 0
-
-	offset := 30
-	bitValue := int(0)
-	mask := 1 << offset
-
-	for {
-		iters++
-
-		if verbose {
-			newBitValue := (iters & mask) >> offset
-
-			if newBitValue != bitValue {
-				fmt.Printf("iters=%d percent=%f time=%s\n", iters, float64(iters)/float64(math.MaxInt64), time.Now())
-			}
-
-			bitValue = newBitValue
-		}
-
-		res := p.instructionGenerator.Next(p.directionGenerator.Next())
-
-		if res == p.instructionGenerator.finalInstruction {
-			break
-		}
-	}
-
-	return iters
+func (p *Program) Part1() int {
+	return p.instructionGenerator.Part1(p.directionGenerator)
 }
 
 func (p *Program) Part2(verbose bool) int {

@@ -23,7 +23,7 @@ func TestExample(t *testing.T) {
 		err = file.Close()
 		panicOnError(err)
 
-		res := program.Part1(true)
+		res := program.Part1()
 
 		assert.Equal(t, test.expected, res)
 	}
@@ -37,7 +37,7 @@ func TestMyPart1(t *testing.T) {
 
 	program := newProgram(file)
 
-	res := program.Part1(false)
+	res := program.Part1()
 
 	assert.Equal(t, 16343, res)
 }

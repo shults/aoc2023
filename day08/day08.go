@@ -39,7 +39,7 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	}
 
 	if *p1 {
-		part1 := program.Part1(*verbose)
+		part1 := program.Part1()
 		fmt.Printf("part1=%d\n", part1)
 	}
 
