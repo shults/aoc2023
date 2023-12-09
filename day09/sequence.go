@@ -1,6 +1,7 @@
 package day09
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -13,13 +14,14 @@ func ParseSequence(numbers string) (*Sequence, error) {
 		num, err := strconv.Atoi(strNum)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse int: %s", err)
 		}
 
 		nums[i] = num
 	}
 
-	prevs := make([]int, 0)
+	endList := make([]int, 0)
+	startList := make([]int, 0)
 	currSeq := make([]int, len(nums))
 	copy(currSeq, nums)
 
@@ -38,7 +40,8 @@ func ParseSequence(numbers string) (*Sequence, error) {
 				}
 			}
 
-			prevs = append(prevs, currSeq[len(currSeq)-2])
+			endList = append(endList, currSeq[len(currSeq)-2])
+			startList = append(startList, currSeq[0])
 
 			if allDiffsAreZero {
 				break
@@ -49,50 +52,86 @@ func ParseSequence(numbers string) (*Sequence, error) {
 	}
 
 	return &Sequence{
-		prev:    prevs,
-		current: nums[len(nums)-1],
+		end:       nums[len(nums)-1],
+		startList: startList,
+		endList:   endList,
 	}, nil
 }
 
-func NewSequence(current int, prev []int) Sequence {
+func NewSequence(
+	end int,
+	startList, endList []int,
+) Sequence {
 	return Sequence{
-		prev:    prev,
-		current: current,
+		end:       end,
+		startList: startList,
+		endList:   endList,
 	}
 }
 
 type Sequence struct {
-	prev    []int
-	current int
+	end                int
+	startList, endList []int
 }
 
 func (s *Sequence) GetNext() int {
-	return s.GetByShift(1)
+	return s.GetNextByShift(1)
 }
 
-func (s *Sequence) GetByShift(shift uint) int {
+func (s *Sequence) GetPrev() int {
+	return s.GetPrevByShift(1)
+}
+
+func (s *Sequence) GetPrevByShift(shift uint) int {
 	if shift == 0 {
-		return s.current
+		return s.startList[0]
 	}
 
-	prev := make([]int, len(s.prev))
-	copy(prev, s.prev)
+	startList := make([]int, len(s.startList))
+	copy(startList, s.startList)
 
-	current := s.current
+	start := 0
 	for i := 0; i < int(shift); i++ {
-		current = s.genNext(current, prev, 0)
+		start = s.genPrev(startList)
 	}
 
-	return current
+	return start
 }
 
-func (s *Sequence) genNext(currentVal int, previous []int, depth int) int {
-	if len(previous)-1 == depth {
-		return previous[depth]
+func (s *Sequence) genPrev(startList []int) int {
+	last := startList[len(startList)-1]
+
+	for i := len(startList) - 2; i > -1; i-- {
+		last = startList[i] - last
+		startList[i] = last
 	}
 
-	res := currentVal + s.genNext(currentVal-previous[depth], previous, depth+1)
-	previous[depth] = currentVal
+	return last
+}
+
+func (s *Sequence) GetNextByShift(shift uint) int {
+	if shift == 0 {
+		return s.end
+	}
+
+	endList := make([]int, len(s.endList))
+	copy(endList, s.endList)
+
+	last := s.end
+	for i := 0; i < int(shift); i++ {
+		last = s.genNext(last, endList, 0)
+	}
+
+	return last
+}
+
+func (s *Sequence) genNext(last int, endList []int, depth int) int {
+	if len(endList)-1 == depth {
+		return endList[depth]
+	}
+
+	res := last + s.genNext(last-endList[depth], endList, depth+1)
+	endList[depth] = last
 
 	return res
 }

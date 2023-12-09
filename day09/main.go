@@ -67,7 +67,13 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	}
 
 	if *p2 {
+
 		part2 := 0
+
+		for _, seq := range sequences {
+			part2 += seq.GetPrev()
+		}
+
 		fmt.Printf("part2=%d\n", part2)
 	}
 }
