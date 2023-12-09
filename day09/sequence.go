@@ -40,7 +40,7 @@ func ParseSequence(numbers string) (*Sequence, error) {
 				}
 			}
 
-			endList = append(endList, currSeq[len(currSeq)-2])
+			endList = append(endList, currSeq[len(currSeq)-1])
 			startList = append(startList, currSeq[0])
 
 			if allDiffsAreZero {
@@ -52,25 +52,21 @@ func ParseSequence(numbers string) (*Sequence, error) {
 	}
 
 	return &Sequence{
-		end:       nums[len(nums)-1],
 		startList: startList,
 		endList:   endList,
 	}, nil
 }
 
 func NewSequence(
-	end int,
 	startList, endList []int,
 ) Sequence {
 	return Sequence{
-		end:       end,
 		startList: startList,
 		endList:   endList,
 	}
 }
 
 type Sequence struct {
-	end                int
 	startList, endList []int
 }
 
@@ -83,55 +79,27 @@ func (s *Sequence) GetPrev() int {
 }
 
 func (s *Sequence) GetPrevByShift(shift uint) int {
-	if shift == 0 {
-		return s.startList[0]
-	}
-
 	startList := make([]int, len(s.startList))
 	copy(startList, s.startList)
 
-	start := 0
 	for i := 0; i < int(shift); i++ {
-		start = s.genPrev(startList)
+		for j := len(startList) - 2; j > -1; j-- {
+			startList[j] = startList[j] - startList[j+1]
+		}
 	}
 
-	return start
-}
-
-func (s *Sequence) genPrev(startList []int) int {
-	last := startList[len(startList)-1]
-
-	for i := len(startList) - 2; i > -1; i-- {
-		last = startList[i] - last
-		startList[i] = last
-	}
-
-	return last
+	return startList[0]
 }
 
 func (s *Sequence) GetNextByShift(shift uint) int {
-	if shift == 0 {
-		return s.end
-	}
-
 	endList := make([]int, len(s.endList))
 	copy(endList, s.endList)
 
-	last := s.end
 	for i := 0; i < int(shift); i++ {
-		last = s.genNext(last, endList, 0)
+		for j := len(endList) - 2; j > -1; j-- {
+			endList[j] = endList[j] + endList[j+1]
+		}
 	}
 
-	return last
-}
-
-func (s *Sequence) genNext(last int, endList []int, depth int) int {
-	if len(endList)-1 == depth {
-		return endList[depth]
-	}
-
-	res := last + s.genNext(last-endList[depth], endList, depth+1)
-	endList[depth] = last
-
-	return res
+	return endList[0]
 }
