@@ -10,6 +10,7 @@ import (
 )
 
 // part1=1798691765
+// part2=1104
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	//verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")

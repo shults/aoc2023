@@ -79,27 +79,30 @@ func (s *Sequence) GetPrev() int {
 }
 
 func (s *Sequence) GetPrevByShift(shift uint) int {
-	startList := make([]int, len(s.startList))
-	copy(startList, s.startList)
-
-	for i := 0; i < int(shift); i++ {
-		for j := len(startList) - 2; j > -1; j-- {
-			startList[j] = startList[j] - startList[j+1]
-		}
-	}
-
-	return startList[0]
+	return s.getDayByShift(shift, s.startList, true)
 }
 
 func (s *Sequence) GetNextByShift(shift uint) int {
-	endList := make([]int, len(s.endList))
-	copy(endList, s.endList)
+	return s.getDayByShift(shift, s.endList, false)
+}
+
+func (s *Sequence) getDayByShift(shift uint, data []int, start bool) int {
+	if shift == 0 {
+		return data[0]
+	}
+
+	dataCopy := make([]int, len(data))
+	copy(dataCopy, data)
 
 	for i := 0; i < int(shift); i++ {
-		for j := len(endList) - 2; j > -1; j-- {
-			endList[j] = endList[j] + endList[j+1]
+		for j := len(dataCopy) - 2; j > -1; j-- {
+			if start {
+				dataCopy[j] -= dataCopy[j+1]
+			} else {
+				dataCopy[j] += dataCopy[j+1]
+			}
 		}
 	}
 
-	return endList[0]
+	return dataCopy[0]
 }
