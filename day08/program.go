@@ -1,6 +1,7 @@
 package day08
 
 import (
+	"aoc2023/tools"
 	"bufio"
 	"io"
 )
@@ -17,13 +18,13 @@ func newProgram(in io.Reader) Program {
 		ctr++
 		line, isPrefix, err := reader.ReadLine()
 
-		panicOnFalse(!isPrefix, "prefix is not expected")
+		tools.AssertTrue(!isPrefix, "prefix is not expected")
 
 		if err == io.EOF {
 			break
 		}
 
-		panicOnError(err)
+		tools.AssertNoError(err)
 
 		if ctr == 1 {
 			generator := NewDirectionGenerator(line)

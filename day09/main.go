@@ -1,15 +1,17 @@
-package day08
+package day09
 
 import (
 	"aoc2023/tools"
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 )
 
+// part1=1798691765
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
-	verbose := flagSet.Bool("verbose", false, "verbose mode")
+	//verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")
 	p1 := flagSet.Bool("p1", false, "part 1")
 	p2 := flagSet.Bool("p2", false, "part 2")
@@ -21,8 +23,6 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 		*p2 = true
 	}
 
-	var program Program
-
 	if len(*inputFile) > 0 {
 		file, err := os.Open(*inputFile)
 
@@ -32,20 +32,42 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 			os.Exit(1)
 		}
 
-		program = newProgram(file)
-		err = file.Close()
 		tools.AssertNoError(err)
-	} else {
-		program = newProgram(in)
+
+		in = file
+		defer file.Close()
+	}
+
+	reader := bufio.NewReader(in)
+	var sequences []Sequence
+
+	for {
+		line, isPrefix, err := reader.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		tools.AssertTrue(!isPrefix, "prefix is not expected")
+
+		seq, err := ParseSequence(string(line))
+		tools.AssertNoError(err)
+
+		sequences = append(sequences, *seq)
 	}
 
 	if *p1 {
-		part1 := program.Part1()
+		part1 := 0
+
+		for _, seq := range sequences {
+			part1 += seq.GetNext()
+		}
+
 		fmt.Printf("part1=%d\n", part1)
 	}
 
 	if *p2 {
-		part2 := program.Part2(*verbose)
+		part2 := 0
 		fmt.Printf("part2=%d\n", part2)
 	}
 }
