@@ -10,7 +10,7 @@ import (
 )
 
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
-	//verbose := flagSet.Bool("verbose", false, "verbose mode")
+	verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")
 	p1 := flagSet.Bool("p1", false, "part 1")
 	p2 := flagSet.Bool("p2", false, "part 2")
@@ -63,5 +63,10 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 		part2 := graph.CalculatePart2()
 
 		fmt.Printf("part2=%d\n", part2)
+
+		if *verbose {
+			part22 := graph.CalculatePart2Analysis()
+			fmt.Printf("part22=%d\n", part22)
+		}
 	}
 }
