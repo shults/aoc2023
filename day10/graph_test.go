@@ -20,6 +20,8 @@ func TestGrafConstruction(t *testing.T) {
 		".....",
 	})
 
+	g.CalculatePart2()
+
 	assert.NotNil(t, g.startTile)
 	assert.Equal(t, 4, g.CalculatePart1())
 }

@@ -1,45 +1,56 @@
 package day10
 
-import "fmt"
+import (
+	"aoc2023/tools"
+	"fmt"
+	"math"
+)
 
-func NewAdjacentHelper(matrix [][]*Tile) *AdjacentHelper {
+type BoundaryHelper struct {
+	minRow, maxRow, minCol, maxCol int
+}
 
-	return &AdjacentHelper{
+func NewBoundaryHelper(matrix [][]*Tile) BoundaryHelper {
+	return BoundaryHelper{
+		minCol: 0,
+		minRow: 0,
 		maxRow: len(matrix) - 1,
 		maxCol: len(matrix[0]) - 1,
-		matrix: matrix,
 	}
+}
+
+func (b *BoundaryHelper) Contains(p Position) bool {
+	return p.row >= b.minRow && p.col >= b.minCol && p.row <= b.maxRow && p.col <= b.maxCol
 }
 
 type AdjacentHelper struct {
-	maxRow, maxCol int
 	matrix         [][]*Tile
+	BoundaryHelper BoundaryHelper
 }
 
-func (a *AdjacentHelper) CanAddToAdjacent(currentTile *Tile, moveVector Direction) (bool, *Tile) {
+func NewAdjacentHelper(matrix [][]*Tile) *AdjacentHelper {
+	return &AdjacentHelper{
+		matrix:         matrix,
+		BoundaryHelper: NewBoundaryHelper(matrix),
+	}
+}
+
+func (f *AdjacentHelper) CanAddToAdjacent(currentTile *Tile, moveVector Direction) (bool, *Tile) {
 	nextPosition := currentTile.nextPosition(moveVector)
 
-	if !a.contains(nextPosition) {
+	if !f.BoundaryHelper.Contains(nextPosition) {
 		return false, nil
 	}
 
-	nextTile := a.matrix[nextPosition.row][nextPosition.col]
-
-	if currentTile.isStartTile {
-		return nextTile.CanBeVisitedFrom(moveVector.opposite()), nextTile
-	}
+	nextTile := f.matrix[nextPosition.row][nextPosition.col]
 
 	// if I cannot be visited from opposite direction
-	if currentTile.CanBeVisitedFrom(moveVector) && nextTile.CanBeVisitedFrom(moveVector.opposite()) {
+	if currentTile.canBeVisitedFrom(moveVector, nextTile.tileSymbol) && nextTile.canBeVisitedFrom(moveVector.opposite(), currentTile.tileSymbol) {
 		// i cant be visited nextPosition opposite direction
 		return true, nextTile
 	}
 
 	return false, nil
-}
-
-func (a *AdjacentHelper) contains(p Position) bool {
-	return p.row >= 0 && p.col >= 0 && p.row <= a.maxRow && p.col <= a.maxCol
 }
 
 type Position struct {
@@ -51,6 +62,24 @@ func NewPosition(row, col int) Position {
 		row: row,
 		col: col,
 	}
+}
+
+func (p Position) direction(destination Position) Direction {
+	for _, pair := range []struct {
+		Position
+		Direction
+	}{
+		{p.north(), directionNorth},
+		{p.east(), directionEast},
+		{p.south(), directionSouth},
+		{p.west(), directionWest},
+	} {
+		if destination == pair.Position {
+			return pair.Direction
+		}
+	}
+
+	panic("not a neighbor")
 }
 
 func (p Position) nextPosition(dir Direction) Position {
@@ -89,17 +118,19 @@ func (p Position) south() Position {
 
 type Tile struct {
 	Position
-	TileSymbol
+	tileSymbol    TileSymbol
 	adjacentNodes []*Tile
-	isStartTile   bool
 }
 
-func NewTile(pos Position, sym TileSymbol, tileSymbol byte) Tile {
+func (t *Tile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
+	return t.tileSymbol.canBeVisitedFrom(from, other)
+}
+
+func NewTile(pos Position, sym TileSymbol) Tile {
 	return Tile{
 		Position:      pos,
-		TileSymbol:    sym,
+		tileSymbol:    sym,
 		adjacentNodes: nil,
-		isStartTile:   tileSymbol == start,
 	}
 }
 
@@ -117,8 +148,8 @@ func (t *Tile) BuildAdjacent(adjacentHelper *AdjacentHelper) {
 	}
 }
 
-func (t *Tile) TraverseInDepth(visitedSet *VisitedSet) (nodesToVisit []*Tile) {
-	if visitedSet.WasVisited(t.Position) {
+func (t *Tile) TraverseInWidth(visitedSet *PositionSet) (nodesToVisit []*Tile) {
+	if visitedSet.Has(t.Position) {
 		return []*Tile{}
 	}
 
@@ -127,7 +158,7 @@ func (t *Tile) TraverseInDepth(visitedSet *VisitedSet) (nodesToVisit []*Tile) {
 	nodesToVisit = make([]*Tile, 0)
 
 	for _, adjacentNode := range t.adjacentNodes {
-		if !visitedSet.WasVisited(adjacentNode.Position) {
+		if !visitedSet.Has(adjacentNode.Position) {
 			nodesToVisit = append(nodesToVisit, adjacentNode)
 		}
 	}
@@ -135,31 +166,45 @@ func (t *Tile) TraverseInDepth(visitedSet *VisitedSet) (nodesToVisit []*Tile) {
 	return nodesToVisit
 }
 
+func (t *Tile) TraverseInDepth(visitedSet *PositionSet, fn func(current *Tile)) {
+	if visitedSet.Has(t.Position) {
+		return
+	}
+
+	visitedSet.Add(t.Position)
+	fn(t)
+
+	for _, adjacentNode := range t.adjacentNodes {
+		adjacentNode.TraverseInDepth(visitedSet, fn)
+	}
+}
+
 type TileSymbol interface {
-	CanBeVisitedFrom(from Direction) bool
+	canBeVisitedFrom(from Direction, other TileSymbol) bool
 }
 
 var _ TileSymbol = (*StartTile)(nil)
 
 type StartTile struct{}
 
-func (t StartTile) CanBeVisitedFrom(from Direction) bool {
-	return false
+func (t StartTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
+	return true
 }
 
 var _ TileSymbol = (*GroundTile)(nil)
 
 type GroundTile struct{}
 
-func (g GroundTile) CanBeVisitedFrom(from Direction) bool {
-	return false
+func (g GroundTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
+	_, ok := other.(*GroundTile)
+	return ok
 }
 
 var _ TileSymbol = (*SouthWestTile)(nil)
 
 type SouthWestTile struct{}
 
-func (s SouthWestTile) CanBeVisitedFrom(from Direction) bool {
+func (s SouthWestTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isSouth() || from.isWest()
 }
 
@@ -167,7 +212,7 @@ var _ TileSymbol = (*SouthEastTile)(nil)
 
 type SouthEastTile struct{}
 
-func (s SouthEastTile) CanBeVisitedFrom(from Direction) bool {
+func (s SouthEastTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isSouth() || from.isEast()
 }
 
@@ -175,7 +220,7 @@ var _ TileSymbol = (*NorthEastTile)(nil)
 
 type NorthEastTile struct{}
 
-func (s NorthEastTile) CanBeVisitedFrom(from Direction) bool {
+func (s NorthEastTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isNorth() || from.isEast()
 }
 
@@ -183,7 +228,7 @@ var _ TileSymbol = (*NorthWestTile)(nil)
 
 type NorthWestTile struct{}
 
-func (s NorthWestTile) CanBeVisitedFrom(from Direction) bool {
+func (s NorthWestTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isNorth() || from.isWest()
 }
 
@@ -191,7 +236,7 @@ var _ TileSymbol = (*HorizontalTile)(nil)
 
 type HorizontalTile struct{}
 
-func (s HorizontalTile) CanBeVisitedFrom(from Direction) bool {
+func (s HorizontalTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isEast() || from.isWest()
 }
 
@@ -199,7 +244,7 @@ var _ TileSymbol = (*VerticalTile)(nil)
 
 type VerticalTile struct{}
 
-func (s VerticalTile) CanBeVisitedFrom(from Direction) bool {
+func (s VerticalTile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return from.isNorth() || from.isSouth()
 }
 
@@ -269,34 +314,57 @@ func NewDirection(symbol DirectionSymbol) Direction {
 }
 
 func (d Direction) opposite() Direction {
-	switch d.symbol {
-	case dirWest:
+	switch d {
+	case directionWest:
 		return directionEast
-	case dirEast:
+	case directionEast:
 		return directionWest
-	case dirNorth:
+	case directionNorth:
 		return directionSouth
-	case dirSouth:
+	case directionSouth:
 		return directionNorth
 	default:
 		panic(fmt.Errorf("unknown direction '%s'", []byte{byte(d.symbol)}))
 	}
 }
 
+func (d Direction) left() Direction {
+	switch d {
+	case directionNorth:
+		return directionWest
+	case directionWest:
+		return directionSouth
+	case directionSouth:
+		return directionEast
+	case directionEast:
+		return directionNorth
+	default:
+		panic(fmt.Errorf("unknown direction '%s'", []byte{byte(d.symbol)}))
+	}
+}
+
+func (d Direction) right() Direction {
+	return d.left().opposite()
+}
+
 func (d Direction) isWest() bool {
-	return d.symbol == dirWest
+	return d == directionWest
 }
 
 func (d Direction) isEast() bool {
-	return d.symbol == dirEast
+	return d == directionEast
 }
 
 func (d Direction) isNorth() bool {
-	return d.symbol == dirNorth
+	return d == directionNorth
 }
 
 func (d Direction) isSouth() bool {
-	return d.symbol == dirSouth
+	return d == directionSouth
+}
+
+func (d Direction) String() string {
+	return fmt.Sprintf("Direction(%s)", []byte{byte(d.symbol)})
 }
 
 type DirectionSymbol byte
@@ -316,7 +384,9 @@ var (
 )
 
 type Graph struct {
-	startTile *Tile
+	startTile      *Tile
+	matrix         [][]*Tile
+	boundaryHelper BoundaryHelper
 }
 
 func NewGraph(field []string) Graph {
@@ -330,10 +400,9 @@ func NewGraph(field []string) Graph {
 			tile := NewTile(
 				NewPosition(row, col),
 				NewTileSymbol(tileSymbol),
-				tileSymbol,
 			)
 
-			if tile.isStartTile {
+			if tileSymbol == start {
 				startTile = &tile
 			}
 
@@ -343,21 +412,23 @@ func NewGraph(field []string) Graph {
 		tilesMatrix[row] = positions
 	}
 
-	adjacentHelper := NewAdjacentHelper(tilesMatrix)
+	fenceHelper := NewAdjacentHelper(tilesMatrix)
 
 	for _, tileRow := range tilesMatrix {
 		for _, tile := range tileRow {
-			tile.BuildAdjacent(adjacentHelper)
+			tile.BuildAdjacent(fenceHelper)
 		}
 	}
 
 	return Graph{
-		startTile: startTile,
+		startTile:      startTile,
+		matrix:         tilesMatrix,
+		boundaryHelper: fenceHelper.BoundaryHelper,
 	}
 }
 
 func (g *Graph) CalculatePart1() int {
-	set := NewVisitedSet()
+	set := NewPositionSet()
 	nodesToVisit := []*Tile{g.startTile}
 
 	iters := 0
@@ -365,7 +436,7 @@ func (g *Graph) CalculatePart1() int {
 		newNodesToVisit := make([]*Tile, 0)
 
 		for _, node := range nodesToVisit {
-			newNodesToVisit = append(newNodesToVisit, node.TraverseInDepth(set)...)
+			newNodesToVisit = append(newNodesToVisit, node.TraverseInWidth(set)...)
 		}
 
 		if len(newNodesToVisit) == 0 {
@@ -379,21 +450,199 @@ func (g *Graph) CalculatePart1() int {
 	return iters
 }
 
-type VisitedSet struct {
-	inner map[Position]struct{}
+func (g *Graph) CalculatePart2() int {
+	fenceSet := NewPositionSet()
+	fenceTiles := make([]*Tile, 0)
+
+	g.startTile.TraverseInDepth(fenceSet, func(current *Tile) {
+		if len(current.adjacentNodes) != 2 {
+			panic("expected each tile to have two adjacent nodes")
+		}
+
+		fenceTiles = append(fenceTiles, current)
+	})
+
+	tools.AssertTrue(len(fenceTiles) > 0, "expected number of visited fenceTiles be greater zero")
+	fenceTiles = append(fenceTiles, fenceTiles[0])
+
+	leftSet := NewPositionSet()
+	rightSet := NewPositionSet()
+
+	for i := 0; i < len(fenceTiles)-1; i++ {
+		from := fenceTiles[i]
+		to := fenceTiles[i+1]
+		direction := from.direction(to.Position)
+
+		for _, tile := range []*Tile{from, to} {
+			right := tile.nextPosition(direction.right())
+
+			// is not a fence
+			if !fenceSet.Has(right) {
+				g.traverseInWidth(rightSet, right)
+			}
+		}
+	}
+
+	for i := 0; i < len(fenceTiles)-1; i++ {
+		from := fenceTiles[i]
+		to := fenceTiles[i+1]
+		direction := from.direction(to.Position)
+
+		for _, tile := range []*Tile{from, to} {
+			left := tile.nextPosition(direction.left())
+			// is not a fence
+			if !fenceSet.Has(left) {
+				g.traverseInWidth(leftSet, left)
+			}
+		}
+	}
+
+	leftSetIsOpen := g.isOpenSet(leftSet)
+	rightSetIsOpen := g.isOpenSet(rightSet)
+
+	intersection := fenceSet.Intersection(leftSet, rightSet)
+	fmt.Printf("intersection %v\n", intersection)
+
+	merged := fenceSet.Merge(leftSet, rightSet)
+	fmt.Printf("merged %v\n", merged.Size())
+	fmt.Printf("matrix %v\n", len(g.matrix)*len(g.matrix[0]))
+
+	for _, row := range g.matrix {
+		for _, tile := range row {
+			// traverse close graf
+
+			merged.Add(tile.Position)
+		}
+	}
+
+	fmt.Printf("merged after %v\n", merged.Size())
+
+	//setOfOthers := NewPositionSet()
+
+	//for _, cols := range g.matrix {
+	//	for _, tile := range cols {
+	//		if !
+	//		tile.Position
+	//	}
+	//}
+
+	fmt.Printf("leftSetIsOpen: %v %d\n", leftSetIsOpen, leftSet.Size())
+	fmt.Printf("rightSetIsOpen: %v %d\n", rightSetIsOpen, rightSet.Size())
+
+	//fmt.Printf("leftSet %+v\n", leftSet)
+	//fmt.Printf("rightSet %+v\n", rightSet)
+
+	if leftSetIsOpen && !rightSetIsOpen {
+		//fmt.Printf("leftSet %+v\n", leftSet)
+		return rightSet.Size()
+	}
+
+	if rightSetIsOpen && !leftSetIsOpen {
+		return leftSet.Size()
+	}
+
+	panic("one set should be closed and other open")
 }
 
-func NewVisitedSet() *VisitedSet {
-	return &VisitedSet{
-		inner: make(map[Position]struct{}),
+func (g *Graph) isOpenSet(s *PositionSet) bool {
+	bh := g.boundaryHelper
+	return s.minRow == bh.minRow || s.minCol == bh.minCol || s.maxCol == bh.maxCol || s.maxRow == bh.maxRow
+}
+
+func (g *Graph) traverseInWidth(set *PositionSet, pos Position) {
+	if !g.boundaryHelper.Contains(pos) {
+		return
+	}
+
+	g.matrix[pos.row][pos.col].TraverseInWidth(set)
+}
+
+type PositionSet struct {
+	innerMap       map[Position]struct{}
+	minRow, maxRow int
+	minCol, maxCol int
+}
+
+func NewPositionSet() *PositionSet {
+	return &PositionSet{
+		innerMap: make(map[Position]struct{}),
+		minRow:   math.MaxInt,
+		maxRow:   math.MinInt,
+		minCol:   math.MaxInt,
+		maxCol:   math.MinInt,
 	}
 }
 
-func (s *VisitedSet) WasVisited(p Position) bool {
-	_, wasVisited := s.inner[p]
+func (s *PositionSet) ForEach(fn func(position Position)) {
+	for item, _ := range s.innerMap {
+		fn(item)
+	}
+}
+
+func (s *PositionSet) Clone() *PositionSet {
+	clone := NewPositionSet()
+	s.ForEach(clone.Add)
+	return clone
+}
+
+func (s *PositionSet) Merge(others ...*PositionSet) *PositionSet {
+	clone := s.Clone()
+
+	for _, other := range others {
+		other.ForEach(clone.Add)
+	}
+
+	return clone
+}
+
+func (s *PositionSet) Intersection(others ...*PositionSet) *PositionSet {
+	merged := s.Merge(others...)
+	inter := NewPositionSet()
+
+	others = append(others, s)
+	merged.ForEach(func(position Position) {
+		for _, other := range others {
+			if !other.Has(position) {
+				return
+			}
+		}
+
+		inter.Add(position)
+	})
+
+	return inter
+}
+
+func (s *PositionSet) Has(p Position) bool {
+	_, wasVisited := s.innerMap[p]
 	return wasVisited
 }
 
-func (s *VisitedSet) Add(p Position) {
-	s.inner[p] = struct{}{}
+func (s *PositionSet) Add(p Position) {
+	s.innerMap[p] = struct{}{}
+	s.minRow = tools.Min(s.minRow, p.row)
+	s.maxRow = tools.Max(s.maxRow, p.row)
+	s.minCol = tools.Min(s.minCol, p.col)
+	s.maxCol = tools.Max(s.maxCol, p.col)
 }
+
+func (s *PositionSet) MinCorner() Position {
+	return Position{
+		row: s.minRow,
+		col: s.minCol,
+	}
+}
+
+func (s *PositionSet) MaxCorner() Position {
+	return Position{
+		row: s.maxRow,
+		col: s.maxCol,
+	}
+}
+
+func (s *PositionSet) Size() int {
+	return len(s.innerMap)
+}
+
+//leftSetIsClosed: true 922
+//rightSetIsClosed: false 258

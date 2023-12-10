@@ -60,8 +60,7 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	}
 
 	if *p2 {
-
-		part2 := 0
+		part2 := graph.CalculatePart2()
 
 		fmt.Printf("part2=%d\n", part2)
 	}
