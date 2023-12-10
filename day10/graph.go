@@ -3,10 +3,11 @@ package day10
 import (
 	"aoc2023/tools"
 	"fmt"
-	"github.com/fatih/color"
 	"math"
 )
 
+// part1=6738
+// part2=579
 type BoundaryHelper struct {
 	minRow, maxRow, minCol, maxCol int
 }
@@ -52,18 +53,6 @@ func (f *AdjacentHelper) CanAddToAdjacent(currentTile *Tile, moveVector Directio
 	}
 
 	return false, nil
-}
-
-func (f *AdjacentHelper) CanAddToNeighbours(currentTile *Tile, moveVector Direction) (bool, *Tile) {
-	nextPosition := currentTile.nextPosition(moveVector)
-
-	if !f.BoundaryHelper.Contains(nextPosition) {
-		return false, nil
-	}
-
-	nextTile := f.matrix[nextPosition.row][nextPosition.col]
-
-	return true, nextTile
 }
 
 type Position struct {
@@ -133,7 +122,6 @@ type Tile struct {
 	Position
 	tileSymbol    TileSymbol
 	adjacentNodes []*Tile
-	allNeighbours []*Tile
 	val           byte
 }
 
@@ -142,17 +130,12 @@ func NewTile(pos Position, sym TileSymbol, tileSymbol byte) Tile {
 		Position:      pos,
 		tileSymbol:    sym,
 		adjacentNodes: nil,
-		allNeighbours: nil,
 		val:           tileSymbol,
 	}
 }
 
 func (t *Tile) canBeVisitedFrom(from Direction, other TileSymbol) bool {
 	return t.tileSymbol.canBeVisitedFrom(from, other)
-}
-
-func (t *Tile) isGround() bool {
-	return t.val == ground
 }
 
 func (t *Tile) BuildAdjacent(adjacentHelper *AdjacentHelper) {
@@ -165,10 +148,6 @@ func (t *Tile) BuildAdjacent(adjacentHelper *AdjacentHelper) {
 	} {
 		if ok, node := adjacentHelper.CanAddToAdjacent(t, dir); ok {
 			t.adjacentNodes = append(t.adjacentNodes, node)
-		}
-
-		if ok, node := adjacentHelper.CanAddToNeighbours(t, dir); ok {
-			t.allNeighbours = append(t.allNeighbours, node)
 		}
 	}
 }
@@ -193,20 +172,6 @@ func (t *Tile) TraverseInWidth(visitedSet *PositionSet, cb func(*Tile)) (nodesTo
 	}
 
 	return nodesToVisit
-}
-
-func (t *Tile) TraverseNeighboursWidth(visitedSet *PositionSet, cb func(*Tile)) (nodesToVisit []*Tile) {
-	if cb == nil {
-		cb = func(tile *Tile) {}
-	}
-
-	if visitedSet.Has(t.Position) {
-		return []*Tile{}
-	}
-
-	visitedSet.Add(t.Position)
-
-	return t.allNeighbours
 }
 
 func (t *Tile) TraverseInDepth(visitedSet *PositionSet, fn func(current *Tile)) {
@@ -459,18 +424,23 @@ func NewGraph(field []string) Graph {
 		tilesMatrix[row] = positions
 	}
 
-	fenceHelper := NewAdjacentHelper(tilesMatrix)
+	g := Graph{
+		startTile:      startTile,
+		matrix:         tilesMatrix,
+		boundaryHelper: NewBoundaryHelper(tilesMatrix),
+	}
 
-	for _, tileRow := range tilesMatrix {
+	g.buildAdjacent()
+
+	return g
+}
+
+func (g *Graph) buildAdjacent() {
+	fenceHelper := NewAdjacentHelper(g.matrix)
+	for _, tileRow := range g.matrix {
 		for _, tile := range tileRow {
 			tile.BuildAdjacent(fenceHelper)
 		}
-	}
-
-	return Graph{
-		startTile:      startTile,
-		matrix:         tilesMatrix,
-		boundaryHelper: fenceHelper.BoundaryHelper,
 	}
 }
 
@@ -498,7 +468,15 @@ func (g *Graph) CalculatePart1() int {
 	traverseWidth(g.startTile, func(_ *Tile) {
 		iters++
 	})
-	return iters
+	return iters / 2
+}
+
+func (g *Graph) ForEach(fn func(*Tile)) {
+	for _, row := range g.matrix {
+		for _, tile := range row {
+			fn(tile)
+		}
+	}
 }
 
 func (g *Graph) CalculatePart2() int {
@@ -513,7 +491,17 @@ func (g *Graph) CalculatePart2() int {
 		fenceTiles = append(fenceTiles, current)
 	})
 
-	//
+	g.ForEach(func(tile *Tile) {
+		if fenceSet.Has(tile.Position) {
+			return
+		}
+
+		*tile = NewTile(tile.Position, NewTileSymbol(ground), ground)
+	})
+
+	// rebuild connections between tiles
+	// assume that all nodes outside are ground nodes
+	g.buildAdjacent()
 
 	tools.AssertTrue(len(fenceTiles) > 0, "expected number of visited fenceTiles be greater zero")
 	fenceTiles = append(fenceTiles, fenceTiles[0])
@@ -521,131 +509,44 @@ func (g *Graph) CalculatePart2() int {
 	leftSet := NewPositionSet()
 	rightSet := NewPositionSet()
 
+	canBeVisited := func(t *Tile) bool {
+		return !fenceSet.Has(t.Position)
+	}
+
 	for i := 0; i < len(fenceTiles)-1; i++ {
 		from := fenceTiles[i]
 		to := fenceTiles[i+1]
 		direction := fenceTiles[i].direction(to.Position)
 
 		for _, tile := range []*Tile{from, to} {
-			rightPosition := tile.nextPosition(direction.right())
-			g.traverseNeighboursInWidth(rightSet, rightPosition, func(t *Tile) bool {
-				return !fenceSet.Has(t.Position)
-			})
-
-			leftPosition := tile.nextPosition(direction.left())
-			g.traverseNeighboursInWidth(leftSet, leftPosition, func(t *Tile) bool {
-				return !fenceSet.Has(t.Position)
-			})
+			g.traverseInWidth(leftSet, tile.nextPosition(direction.left()), canBeVisited)
+			g.traverseInWidth(rightSet, tile.nextPosition(direction.right()), canBeVisited)
 		}
 	}
 
-	leftSetIsOpen := g.isOpenSet(leftSet)
-	rightSetIsOpen := g.isOpenSet(rightSet)
+	return g.selectClosedSet(leftSet, rightSet)
+}
 
-	intersection := fenceSet.Intersection(leftSet, rightSet)
-	fmt.Printf("intersection size %d\n", intersection.Intersection())
+func (g *Graph) selectClosedSet(
+	a *PositionSet,
+	b *PositionSet,
+) int {
+	asIsOpen := g.isOpenSet(a)
+	bIsOpen := g.isOpenSet(b)
 
-	merged := fenceSet.Merge(leftSet, rightSet)
-	fmt.Printf("merged %v\n", merged.Size())
-	fmt.Printf("matrix %v\n", len(g.matrix)*len(g.matrix[0]))
-	fmt.Printf("merged after %v\n", merged.Size())
-
-	fmt.Printf("leftSetIsOpen: %v %d\n", leftSetIsOpen, leftSet.Size())
-	fmt.Printf("rightSetIsOpen: %v %d\n", rightSetIsOpen, rightSet.Size())
-
-	if leftSetIsOpen && rightSetIsOpen {
+	if asIsOpen && bIsOpen {
 		panic("both sets are open")
 	}
 
-	if !leftSetIsOpen && !rightSetIsOpen {
+	if !asIsOpen && !bIsOpen {
 		panic("both sets are closed")
 	}
 
-	if leftSetIsOpen && !rightSetIsOpen {
-		//fmt.Printf("leftSet %+v\n", leftSet)
-		return g.calculateRest(rightSet, leftSet, fenceSet)
+	if asIsOpen {
+		return b.Size()
+	} else {
+		return a.Size()
 	}
-
-	if rightSetIsOpen && !leftSetIsOpen {
-		return g.calculateRest(leftSet, rightSet, fenceSet)
-	}
-
-	panic("one set should be closed and other open")
-}
-
-func (g *Graph) calculateRest(
-	closedSet *PositionSet,
-	openSet *PositionSet,
-	fenceSet *PositionSet,
-) int {
-
-	var nonGroundNodes []*Tile
-	var groundNodes []*Tile
-
-	red := color.New(color.FgRed)
-	yellow := color.New(color.BgYellow)
-	blue := color.New(color.BgBlue)
-
-	for _, row := range g.matrix {
-		for _, tile := range row {
-			if closedSet.Has(tile.Position) {
-				yellow.Printf("%s", []byte{byte(tile.val)})
-			} else if openSet.Has(tile.Position) {
-				blue.Printf("%s", []byte{byte(tile.val)})
-			} else if fenceSet.Has(tile.Position) {
-				red.Printf("%s", []byte{byte(tile.val)})
-			} else {
-				fmt.Printf("%s", []byte{byte(tile.val)})
-			}
-		}
-
-		fmt.Printf("\n")
-	}
-
-	closedSet.ForEach(func(position Position) {
-		node := g.matrix[position.row][position.col]
-
-		if !node.isGround() {
-			nonGroundNodes = append(nonGroundNodes, node)
-		} else {
-			groundNodes = append(groundNodes, node)
-		}
-	})
-
-	//var openNonGroundNodes []*Tile
-	//openSet.ForEach(func(position Position) {
-	//
-	//})
-
-	return closedSet.Size()
-}
-
-func (g *Graph) depthWidth() {}
-
-func (g *Graph) CalculatePart2Analysis() int {
-	allFencesTile := NewPositionSet()
-
-	visitSets := make([]*PositionSet, 0)
-
-	for _, row := range g.matrix {
-		for _, tile := range row {
-			if tile.isGround() {
-				continue
-			}
-
-			if !allFencesTile.Has(tile.Position) {
-				visitSet := traverseWidth(tile, nil)
-				//fmt.Printf("isClosed=%v Size=%d\n", isClosed, visitSet.Size())
-
-				visitSets = append(visitSets, visitSet)
-				allFencesTile.MergeIn(visitSet)
-			}
-		}
-	}
-
-	fmt.Printf("allFencesTile=%d\n", allFencesTile.Size())
-
-	return -1
 }
 
 func (g *Graph) isOpenSet(s *PositionSet) bool {
@@ -653,7 +554,7 @@ func (g *Graph) isOpenSet(s *PositionSet) bool {
 	return s.minRow == bh.minRow || s.minCol == bh.minCol || s.maxCol == bh.maxCol || s.maxRow == bh.maxRow
 }
 
-func (g *Graph) traverseNeighboursInWidth(
+func (g *Graph) traverseInWidth(
 	set *PositionSet,
 	pos Position,
 	canBeVisited func(t *Tile) bool,
@@ -669,7 +570,7 @@ func (g *Graph) traverseNeighboursInWidth(
 
 		for _, tile := range tiles {
 			if canBeVisited(tile) {
-				newTiles = append(newTiles, tile.TraverseNeighboursWidth(set, nil)...)
+				newTiles = append(newTiles, tile.TraverseInWidth(set, nil)...)
 			}
 		}
 
@@ -773,8 +674,3 @@ func (s *PositionSet) MaxCorner() Position {
 func (s *PositionSet) Size() int {
 	return len(s.innerMap)
 }
-
-// leftSetIsClosed: true 922
-// rightSetIsClosed: false 258
-// rightSetIsClosed: false 722 too low
-// 311 wrong

@@ -24,7 +24,7 @@ func TestGrafConstruction(t *testing.T) {
 
 	assert.NotNil(t, g.startTile)
 	assert.Equal(t, 6, g.CalculatePart1())
-	assert.Equal(t, 2, g.CalculatePart2())
+	assert.Equal(t, 4, g.CalculatePart2())
 }
 
 func TestGrafConstructionPart1MoreComplexGraph(t *testing.T) {
@@ -45,8 +45,9 @@ func TestGrafConstructionPart1MoreComplexGraphPart2(t *testing.T) {
 		file     string
 		expected int
 	}{
-		//{"test_part2_simple.txt", 8},
+		{"test_part2_simple.txt", 8},
 		{"test_part2_last.txt", 10},
+		{"my.txt", 579},
 	}
 
 	for _, test := range tests {
@@ -54,8 +55,6 @@ func TestGrafConstructionPart1MoreComplexGraphPart2(t *testing.T) {
 		assert.Nil(t, err)
 
 		g := NewGraph(data)
-
-		g.CalculatePart2Analysis()
 
 		assert.NotNil(t, g.startTile)
 		assert.Equal(t, test.expected, g.CalculatePart2())
