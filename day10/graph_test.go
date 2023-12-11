@@ -51,7 +51,7 @@ func TestGrafConstructionPart1MoreComplexGraphPart2(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		data, err := tools.ReadFile(test.file)
+		data, err := tools.ReadLinesFileLines(test.file)
 		assert.Nil(t, err)
 
 		g := NewGraph(data)

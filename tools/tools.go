@@ -35,28 +35,31 @@ func Max[T cmp.Ordered](a, b T) T {
 	}
 }
 
-func ReadFile(name string) ([]string, error) {
+func ReadLinesFileLines(name string) (lines []string, err error) {
 	file, err := os.Open(name)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	defer file.Close()
 
-	reader := bufio.NewReader(file)
+	return ReadLines(file)
+}
 
-	var res []string
+func ReadLines(in io.Reader) (lines []string, err error) {
+	reader := bufio.NewReader(in)
+
 	line := ""
 	for {
-		bytes, isPrefix, err := reader.ReadLine()
+		bytes, isPrefix, e := reader.ReadLine()
 
-		if err == io.EOF {
+		if e == io.EOF {
 			break
 		}
 
-		if err != nil {
-			return nil, err
+		if e != nil {
+			return nil, e
 		}
 
 		line += string(bytes)
@@ -65,9 +68,9 @@ func ReadFile(name string) ([]string, error) {
 			continue
 		}
 
-		res = append(res, line)
+		lines = append(lines, line)
 		line = ""
 	}
 
-	return res, nil
+	return
 }
