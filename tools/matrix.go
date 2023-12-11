@@ -44,6 +44,10 @@ type Dimensions struct {
 	Rows, Cols int
 }
 
+func (d *Dimensions) Contains(i, j int) bool {
+	return i >= 0 && j >= 0 && i < d.Rows && j < d.Cols
+}
+
 func MatrixSize[T any](matrix [][]T) (dim Dimensions) {
 	dim.Rows = len(matrix)
 

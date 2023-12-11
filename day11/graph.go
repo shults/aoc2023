@@ -6,8 +6,7 @@ import (
 )
 
 type Universe struct {
-	matrix   [][]*node
-	galaxies []*node
+	matrix [][]*node
 }
 
 func NewUniverse(data []string) Universe {
@@ -31,31 +30,18 @@ func NewUniverse(data []string) Universe {
 		}
 	}
 
-	dimensions := tools.MatrixSize(matrix)
-
-	for i := len(galaxiesInRows) - 1; i > -1; i-- {
-		size := galaxiesInRows[i]
-
-		if size == 0 {
-			tools.MatrixInsertRow(&matrix, i, newNodes('.', dimensions.Cols))
-			dimensions = tools.MatrixSize(matrix)
-		}
+	return Universe{
+		matrix: matrix,
 	}
+}
 
-	for j := len(galaxiesInCols) - 1; j > -1; j-- {
-		size := galaxiesInCols[j]
-
-		if size == 0 {
-			tools.MatrixInsertCol(&matrix, j, newNodes('.', dimensions.Rows))
-			dimensions = tools.MatrixSize(matrix)
-		}
-	}
-
+func (u *Universe) getGalaxies(emptyRowDistance int) []*node {
 	var galaxies []*node
 
-	for i, row := range matrix {
+	for i, row := range u.matrix {
 		for j, n := range row {
 			n.setPosition(newPosition(i, j))
+			n.bindWithNeighbours(u.matrix)
 
 			if n.isGalaxy() {
 				galaxies = append(galaxies, n)
@@ -63,71 +49,138 @@ func NewUniverse(data []string) Universe {
 		}
 	}
 
-	return Universe{
-		galaxies: galaxies,
-		matrix:   matrix,
+	dim := tools.MatrixSize(u.matrix)
+
+	for i := 0; i < dim.Rows; i++ {
+		hasNoGalaxies := true
+
+		for j := 0; j < dim.Cols; j++ {
+			nodeItem := u.matrix[i][j]
+			if nodeItem.isGalaxy() {
+				hasNoGalaxies = false
+			}
+		}
+
+		if hasNoGalaxies {
+			for j := 0; j < dim.Cols; j++ {
+				nodeItem := u.matrix[i][j]
+				nodeItem.size = emptyRowDistance
+			}
+		}
 	}
+
+	for j := 0; j < dim.Cols; j++ {
+		hasNoGalaxies := true
+
+		for i := 0; i < dim.Rows; i++ {
+			nodeItem := u.matrix[i][j]
+
+			if nodeItem.isGalaxy() {
+				hasNoGalaxies = false
+			}
+		}
+
+		if hasNoGalaxies {
+			for i := 0; i < dim.Cols; i++ {
+				nodeItem := u.matrix[i][j]
+				nodeItem.size = emptyRowDistance
+			}
+		}
+	}
+
+	return galaxies
 }
 
-func (u *Universe) Part1() int {
-	printMatrix(u.matrix)
+func (u *Universe) traverseGalaxy(n *node, cb func(int, *node)) {
+	type nodeDistancePair struct {
+		distance int
+		nPtr     *node
+	}
+
+	pairs := []nodeDistancePair{{
+		nPtr:     n,
+		distance: 0,
+	}}
+
+	visitList := make(map[*node]struct{})
+
+	for {
+		newPairs := make([]nodeDistancePair, 0)
+
+		for _, pair := range pairs {
+			if _, wasVisited := visitList[pair.nPtr]; wasVisited {
+				continue
+			}
+
+			// mark as visited
+			visitList[pair.nPtr] = struct{}{}
+
+			if pair.nPtr.isGalaxy() {
+				cb(pair.distance, pair.nPtr)
+			}
+
+			for _, neighbour := range pair.nPtr.neighbours {
+				newPairs = append(newPairs, nodeDistancePair{
+					nPtr:     neighbour,
+					distance: pair.distance + neighbour.size,
+				})
+			}
+		}
+
+		pairs = newPairs
+
+		// no pairs to visit
+		if len(pairs) == 0 {
+			break
+		}
+	}
+
+}
+
+func (u *Universe) calculate(emptyRowDistance int) int {
+	galaxies := u.getGalaxies(emptyRowDistance)
 
 	positionPairs := newPositionPairSet()
 	distanceSum := 0
-	for i := 0; i < len(u.galaxies); i++ {
-		galaxyA := u.galaxies[i]
 
-		for j := i; j < len(u.galaxies); j++ {
-			galaxyB := u.galaxies[j]
-
-			if i == j {
-				continue
-			}
-
+	for i := 0; i < len(galaxies)-1; i++ {
+		galaxyA := galaxies[i]
+		u.traverseGalaxy(galaxyA, func(distance int, galaxyB *node) {
 			if positionPairs.has(galaxyA.pos, galaxyB.pos) {
-				continue
+				return
 			}
-
-			distance := galaxyA.distance(galaxyB)
-
-			distanceSum += distance
 
 			positionPairs.addPair(galaxyA.pos, galaxyB.pos, distance)
-
-			fmt.Printf("%d to %d => %d\n", i+1, j+1, distance)
-		}
+			distanceSum += distance
+		})
 	}
 
 	return distanceSum
 }
 
-func (u *Universe) Part2() int {
-	return -1
+func (u *Universe) Part1() int {
+	return u.calculate(2)
+}
+
+func (u *Universe) Part2(emptyRowOrColumnSize int) int {
+	return u.calculate(emptyRowOrColumnSize)
 }
 
 type node struct {
-	symbol  byte
-	related []*node
-	pos     position
+	symbol     byte
+	neighbours []*node
+	pos        position
+	size       int
 }
 
 func newNode(symbol byte) *node {
 	tools.AssertTrue(symbol == '#' || symbol == '.', "expected dot(.) or sharp(#)")
 
 	return &node{
-		symbol:  symbol,
-		related: nil,
+		symbol:     symbol,
+		neighbours: nil,
+		size:       1,
 	}
-}
-
-func newNodes(symbol byte, size int) []*node {
-	nodes := make([]*node, size)
-
-	for i := 0; i < size; i++ {
-		nodes[i] = newNode(symbol)
-	}
-
-	return nodes
 }
 
 func (n *node) isGalaxy() bool {
@@ -138,8 +191,33 @@ func (n *node) setPosition(pos position) {
 	n.pos = pos
 }
 
+func (n *node) shiftRow(dx int) {
+	n.pos.row += dx
+}
+
 func (n *node) distance(other *node) int {
 	return n.pos.distance(other.pos)
+}
+
+func (n *node) bindWithNeighbours(matrix [][]*node) {
+	dim := tools.MatrixSize(matrix)
+	neighbours := make([]*node, 0, 4)
+
+	for _, loc := range []position{
+		n.pos.up(),
+		n.pos.down(),
+		n.pos.left(),
+		n.pos.right(),
+	} {
+		if !dim.Contains(loc.row, loc.col) {
+			continue
+		}
+
+		neighbour := matrix[loc.row][loc.col]
+		neighbours = append(neighbours, neighbour)
+	}
+
+	n.neighbours = neighbours
 }
 
 type position struct {
@@ -156,9 +234,24 @@ func (p position) distance(other position) int {
 	return abs(p.row-other.row) + abs(p.col-other.col)
 }
 
-type positionPair struct {
-	a position
-	b position
+func (p position) up() position {
+	p.row--
+	return p
+}
+
+func (p position) down() position {
+	p.row++
+	return p
+}
+
+func (p position) left() position {
+	p.col--
+	return p
+}
+
+func (p position) right() position {
+	p.col++
+	return p
 }
 
 func newPositionPairSet() *positionPairSet {
