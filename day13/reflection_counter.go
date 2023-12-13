@@ -14,6 +14,7 @@ func createIdGenerator() func() int {
 }
 
 // part1=27742
+// part2=32728
 func NewMatrices(data []string) Matrices {
 	var matrices Matrices
 	var matrixData []string
@@ -48,6 +49,16 @@ func (m Matrices) CalculatePart1(verbose bool) int {
 	return res
 }
 
+func (m Matrices) CalculatePart2(verbose bool) int {
+	res := 0
+
+	for _, matrix := range m {
+		res += matrix.CalculatePart2(verbose)
+	}
+
+	return res
+}
+
 type Matrix struct {
 	data [][]byte
 	dim  tools.Dimensions
@@ -69,75 +80,77 @@ func NewMatrix(data []string, id int) Matrix {
 }
 
 func (m *Matrix) CalculatePart1(verbose bool) int {
-	row := m.getRowReflectionLine()
-	col := m.getColReflectionLine()
+	row := m.getReflectionLine(0)
+	m.swapRowsWithColumns()
+	col := m.getReflectionLine(0)
+	m.swapRowsWithColumns()
 
 	if verbose {
-		fmt.Printf("matrix[%d] row=%d col=%d \n", m.id, row, col)
+		fmt.Printf("matrix[%d] col=%d row=%d \n", m.id, col, row)
 	}
 
-	if row == 0 {
-		return col * 100
-	}
-
-	return row
+	return col + row*100
 }
 
-func (m *Matrix) getRowReflectionLine() int {
-	rowReflectionLine := 0
+func (m *Matrix) CalculatePart2(verbose bool) int {
+	row := m.getReflectionLine(1)
+	m.swapRowsWithColumns()
+	col := m.getReflectionLine(1)
+	m.swapRowsWithColumns()
 
-	for j := 0; j < m.dim.Cols-1; j++ {
-		rowReflectionLine = tools.Max(rowReflectionLine, m.findColReflection(j, j+1))
+	if verbose {
+		fmt.Printf("matrix[%d] col=%d row=%d \n", m.id, col, row)
 	}
 
-	return rowReflectionLine
+	return col + row*100
 }
 
-func (m *Matrix) findColReflection(a, b int) int {
-	matched := a + 1
+func (m *Matrix) swapRowsWithColumns() {
+	data := make([][]byte, m.dim.Cols)
 
-	for {
-		if m.compareCols(a, b) {
-			if a == 0 || b == m.dim.Cols-1 {
-				return matched
-			}
-
-			a, b = a-1, b+1
-		} else {
-			return 0
-		}
+	for j := 0; j < m.dim.Cols; j++ {
+		data[j] = make([]byte, m.dim.Rows)
 	}
-}
 
-func (m *Matrix) compareCols(a, b int) bool {
 	for i := 0; i < m.dim.Rows; i++ {
-		if m.data[i][a] != m.data[i][b] {
-			return false
+		for j := 0; j < m.dim.Cols; j++ {
+			data[j][i] = m.data[i][j]
 		}
 	}
 
-	return true
+	m.dim.Cols, m.dim.Rows = m.dim.Rows, m.dim.Cols
+	m.data = data
 }
 
-func (m *Matrix) getColReflectionLine() int {
-	colReflection := 0
+func (m *Matrix) getReflectionLine(allowedMismatches int) int {
 
 	for i := 0; i < m.dim.Rows-1; i++ {
-		colReflection = tools.Max(colReflection, m.findRowReflection(i, i+1))
+		reflectionRow := m.findReflection(i, i+1, allowedMismatches)
+
+		if reflectionRow != 0 {
+			return reflectionRow
+		}
 	}
 
-	return colReflection
+	return 0
 }
 
-func (m *Matrix) findRowReflection(a, b int) int {
+func (m *Matrix) findReflection(a, b, allowedMismatches int) int {
 	matched := a + 1
+	diffsSum := 0
 
 	for {
-		if m.compareRows(a, b) {
-			if a == 0 || b == m.dim.Rows-1 {
-				return matched
-			}
+		diffs := m.countDiffs(a, b)
+		diffsSum += diffs
 
+		if diffsSum <= allowedMismatches {
+			if a == 0 || b == m.dim.Rows-1 {
+				if diffsSum == allowedMismatches {
+					return matched
+				} else {
+					return 0
+				}
+			}
 			a, b = a-1, b+1
 		} else {
 			return 0
@@ -145,12 +158,14 @@ func (m *Matrix) findRowReflection(a, b int) int {
 	}
 }
 
-func (m *Matrix) compareRows(a, b int) bool {
+func (m *Matrix) countDiffs(a, b int) int {
+	diffs := 0
+
 	for j := 0; j < m.dim.Cols; j++ {
 		if m.data[a][j] != m.data[b][j] {
-			return false
+			diffs++
 		}
 	}
 
-	return true
+	return diffs
 }

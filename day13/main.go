@@ -25,4 +25,5 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	matrices := NewMatrices(lines)
 
 	fmt.Printf("part1=%d\n", matrices.CalculatePart1(*verbose))
+	fmt.Printf("part2=%d\n", matrices.CalculatePart2(*verbose))
 }
