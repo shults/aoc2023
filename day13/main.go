@@ -8,7 +8,7 @@ import (
 )
 
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
-	//verbose := flagSet.Bool("verbose", false, "verbose mode")
+	verbose := flagSet.Bool("verbose", false, "verbose mode")
 	inputFile := flagSet.String("f", "", "input file")
 	err := flagSet.Parse(args)
 	tools.AssertNoError(err)
@@ -24,5 +24,5 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	tools.AssertNoError(err)
 	matrices := NewMatrices(lines)
 
-	fmt.Printf("part1=%d\n", matrices.CalculatePart1())
+	fmt.Printf("part1=%d\n", matrices.CalculatePart1(*verbose))
 }

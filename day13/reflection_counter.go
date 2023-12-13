@@ -2,6 +2,7 @@ package day13
 
 import (
 	"aoc2023/tools"
+	"fmt"
 )
 
 func createIdGenerator() func() int {
@@ -37,11 +38,11 @@ func NewMatrices(data []string) Matrices {
 
 type Matrices []Matrix
 
-func (m Matrices) CalculatePart1() int {
+func (m Matrices) CalculatePart1(verbose bool) int {
 	res := 0
 
 	for _, matrix := range m {
-		res += matrix.CalculatePart1()
+		res += matrix.CalculatePart1(verbose)
 	}
 
 	return res
@@ -67,9 +68,13 @@ func NewMatrix(data []string, id int) Matrix {
 	}
 }
 
-func (m *Matrix) CalculatePart1() int {
+func (m *Matrix) CalculatePart1(verbose bool) int {
 	row := m.getRowReflectionLine()
 	col := m.getColReflectionLine()
+
+	if verbose {
+		fmt.Printf("matrix[%d] row=%d col=%d \n", m.id, row, col)
+	}
 
 	if row == 0 {
 		return col * 100

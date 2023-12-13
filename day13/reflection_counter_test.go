@@ -12,13 +12,12 @@ func TestName(t *testing.T) {
 	assert.Nil(t, err)
 	matrices := day13.NewMatrices(data)
 	assert.Equal(t, 2, len(matrices))
-	assert.Equal(t, 405, matrices.CalculatePart1())
+	assert.Equal(t, 405, matrices.CalculatePart1(false))
 }
 
 func TestMyCase(t *testing.T) {
 	data, err := tools.ReadLinesFileLines("my.txt")
 	assert.Nil(t, err)
 	matrices := day13.NewMatrices(data)
-	assert.Equal(t, 2, len(matrices))
-	assert.Equal(t, 405, matrices.CalculatePart1())
+	assert.Equal(t, 27742, matrices.CalculatePart1(false))
 }
