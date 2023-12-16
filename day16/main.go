@@ -7,6 +7,8 @@ import (
 	"io"
 )
 
+// part1 = 7307
+// part2 = 7635
 func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	inputFile := flagSet.String("f", "", "input file")
 	verbose := flagSet.Bool("verbose", false, "input file")
@@ -24,5 +26,5 @@ func Main(flagSet *flag.FlagSet, args []string, in io.Reader) {
 	beamSplitter := NewBeamSplitter(lines)
 
 	fmt.Printf("part1=%d\n", beamSplitter.CalculateEnergizedTiles(*verbose))
-	//fmt.Printf("part2=%d\n", beamSplitter.CalculateFocalSum())
+	fmt.Printf("part2=%d\n", beamSplitter.CalculateMaxEnergizedTiles(*verbose))
 }

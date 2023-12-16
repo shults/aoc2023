@@ -1,7 +1,7 @@
 package day16
 
 import (
-	"fmt"
+	"aoc2023/tools"
 	"github.com/fatih/color"
 	"strings"
 )
@@ -156,15 +156,58 @@ func NewBeamSplitter(rows []string) *BeamSplitter {
 }
 
 func (b *BeamSplitter) CalculateEnergizedTiles(verbose bool) int {
-	visited := make(map[PositionDirection]struct{})
-	b.traverse(NewPositionDirection(Position{0, 0}, dirRight), visited)
+	//cache := make(map[PositionDirection]int)
+	visitSet := NewVisitSet()
+	startPosition := NewPositionDirection(Position{0, 0}, dirRight)
 
-	energizedTiles := make(map[Position]struct{})
+	val := b.traverse(
+		startPosition,
+		visitSet,
+	)
 
-	for v := range visited {
-		energizedTiles[v.Position] = struct{}{}
+	return val
+}
+
+func (b *BeamSplitter) CalculateMaxEnergizedTiles(verbose bool) int {
+	//cache := make(map[PositionDirection]int)
+	dim := tools.MatrixSize(b.tiles)
+
+	maxValue := 0
+
+	for _, pair := range []struct {
+		dir Direction
+		gen func(i int) Position
+	}{
+		{dirBottom, func(i int) Position {
+			return Position{0, i}
+		}},
+		{dirTop, func(i int) Position {
+			return Position{dim.Rows - 1, i}
+		}},
+		{dirRight, func(i int) Position {
+			return Position{i, 0}
+		}},
+		{dirLeft, func(i int) Position {
+			return Position{i, dim.Cols - 1}
+		}},
+	} {
+		for i := 0; i < tools.Max(dim.Cols, dim.Rows); i++ {
+			startPosition := NewPositionDirection(pair.gen(i), pair.dir)
+			visitSet := NewVisitSet()
+
+			maxValue = tools.Max(maxValue, b.traverse(
+				startPosition,
+				visitSet,
+			))
+		}
 	}
 
+	//val, ok := cache[startPosition]
+
+	return maxValue
+}
+
+func (b *BeamSplitter) ToString(energizedTiles map[Position]struct{}) string {
 	yellow := color.New(color.BgYellow)
 
 	var sb strings.Builder
@@ -181,31 +224,30 @@ func (b *BeamSplitter) CalculateEnergizedTiles(verbose bool) int {
 		sb.WriteByte('\n')
 	}
 
-	if verbose {
-		fmt.Printf("%s\b", sb.String())
-	}
-
-	return len(energizedTiles)
+	return sb.String()
 }
 
-func (b *BeamSplitter) traverse(pd PositionDirection, visited map[PositionDirection]struct{}) {
+func (b *BeamSplitter) traverse(
+	pd PositionDirection,
+	visitSet *VisitSet,
+) int {
 	if !b.isInside(pd.Position) {
-		return
+		return 0
 	}
 
-	if _, alreadyVisited := visited[pd]; alreadyVisited {
-		return
+	if visitSet.Has(pd) {
+		return 0
 	}
 
-	visited[pd] = struct{}{}
-
+	visitSet.Add(pd)
 	tile := b.tiles[pd.i][pd.j]
 	nextDirections := tile.split(pd.Direction)
 
 	for _, pdNext := range nextDirections {
-		b.traverse(pdNext, visited)
+		b.traverse(pdNext, visitSet)
 	}
 
+	return visitSet.UniqPositions()
 }
 
 func (b *BeamSplitter) isInside(pos Position) bool {
@@ -265,4 +307,35 @@ func (pd PositionDirection) next(dir Direction) PositionDirection {
 	default:
 		panic("unexpected case")
 	}
+}
+
+type VisitSet struct {
+	posDirMap map[PositionDirection]struct{}
+	posMap    map[Position]struct{}
+}
+
+func NewVisitSet() *VisitSet {
+	return &VisitSet{
+		posMap:    make(map[Position]struct{}),
+		posDirMap: make(map[PositionDirection]struct{}),
+	}
+}
+
+func (v *VisitSet) Add(posDir PositionDirection) {
+	v.posDirMap[posDir] = struct{}{}
+	v.posMap[posDir.Position] = struct{}{}
+}
+
+func (v *VisitSet) Has(posDir PositionDirection) bool {
+	_, has := v.posDirMap[posDir]
+	return has
+}
+
+func (v *VisitSet) HasPosition(pos Position) bool {
+	_, has := v.posMap[pos]
+	return has
+}
+
+func (v *VisitSet) UniqPositions() int {
+	return len(v.posMap)
 }
