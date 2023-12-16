@@ -1,38 +1,13 @@
 package day15
 
-import (
-	"bufio"
-	"io"
-)
-
-func HashSumPart1(in io.Reader) int {
-	reader := bufio.NewReader(in)
-	sum := 0
-
+func Hash(str string) int {
 	currentValue := 0
-	for {
-		b, err := reader.ReadByte()
 
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			panic(err)
-		}
-
-		if b == ',' {
-			sum += currentValue
-			currentValue = 0
-			continue
-		}
-
-		currentValue += int(b)
+	for _, sym := range []byte(str) {
+		currentValue += int(sym)
 		currentValue *= 17
 		currentValue %= 256
 	}
 
-	sum += currentValue
-
-	return sum
+	return currentValue
 }
