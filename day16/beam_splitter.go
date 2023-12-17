@@ -160,12 +160,12 @@ func (b *BeamSplitter) CalculateEnergizedTiles(verbose bool) int {
 	visitSet := NewVisitSet()
 	startPosition := NewPositionDirection(Position{0, 0}, dirRight)
 
-	val := b.traverse(
+	b.traverse(
 		startPosition,
 		visitSet,
 	)
 
-	return val
+	return visitSet.UniqPositions()
 }
 
 func (b *BeamSplitter) CalculateMaxEnergizedTiles(verbose bool) int {
@@ -195,10 +195,12 @@ func (b *BeamSplitter) CalculateMaxEnergizedTiles(verbose bool) int {
 			startPosition := NewPositionDirection(pair.gen(i), pair.dir)
 			visitSet := NewVisitSet()
 
-			maxValue = tools.Max(maxValue, b.traverse(
+			b.traverse(
 				startPosition,
 				visitSet,
-			))
+			)
+
+			maxValue = tools.Max(maxValue, visitSet.UniqPositions())
 		}
 	}
 
@@ -230,13 +232,13 @@ func (b *BeamSplitter) ToString(energizedTiles map[Position]struct{}) string {
 func (b *BeamSplitter) traverse(
 	pd PositionDirection,
 	visitSet *VisitSet,
-) int {
+) {
 	if !b.isInside(pd.Position) {
-		return 0
+		return
 	}
 
 	if visitSet.Has(pd) {
-		return 0
+		return
 	}
 
 	visitSet.Add(pd)
@@ -246,8 +248,6 @@ func (b *BeamSplitter) traverse(
 	for _, pdNext := range nextDirections {
 		b.traverse(pdNext, visitSet)
 	}
-
-	return visitSet.UniqPositions()
 }
 
 func (b *BeamSplitter) isInside(pos Position) bool {
