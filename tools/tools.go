@@ -74,3 +74,11 @@ func ReadLines(in io.Reader) (lines []string, err error) {
 
 	return
 }
+
+func IsAsciiNumber(symbol byte) bool {
+	return symbol >= '0' && symbol <= '9'
+}
+
+func AsciiNumberToInt(symbol byte) int {
+	return int(symbol - '0')
+}
