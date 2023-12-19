@@ -19,5 +19,5 @@ func Test_newTrenchDigger_my_case(t *testing.T) {
 	assert.Nil(t, err)
 
 	td := newTrenchDigger(lines)
-	assert.Equal(t, 62, td.square(true))
+	assert.Equal(t, 61661, td.square(true))
 }
