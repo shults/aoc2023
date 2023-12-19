@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func AssertTrue(cond bool, msg string) {
+func AssertTrue(cond bool, msg ...string) {
 	if !cond {
 		panic(msg)
 	}
